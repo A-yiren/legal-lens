@@ -358,7 +358,7 @@
                         </div>
                         <div class="text-right">
                             <div class="text-xs text-${riskColor}-100">合同类型</div>
-                            <div class="text-sm font-medium">${escapeHtml(contractType)}</div>
+                            <div class="text-sm font-medium">${escapeHtml(document.getElementById("contract-type").value)}</div>
                         </div>
                     </div>
                     <p class="text-sm text-${riskColor}-50">${escapeHtml(data.summary || '')}</p>
