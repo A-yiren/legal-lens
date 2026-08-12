@@ -214,8 +214,8 @@ class ContractReviewService:
         llm_analysis = await self._llm_analyze(contract_text, contract_type, user_role, risk_findings, missing)
 
         # 5. 综合风险等级
-        high_count = sum(1 for r in risk_findings if r["risk_level"] == "high")
-        medium_count = sum(1 for r in risk_findings if r["risk_level"] == "medium")
+        high_count = sum(1 for r in risk_findings if r["level"] == "high")
+        medium_count = sum(1 for r in risk_findings if r["level"] == "medium")
         missing_count = len(missing)
         if high_count >= 2 or missing_count >= 3:
             overall = "high"

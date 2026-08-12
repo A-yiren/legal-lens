@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同审查 — 律瞳</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#0c4a3e', 600: '#0a3d33', 700: '#083029' },
+              accent: { 500: '#d97706', 600: '#b45309' }
+            },
+            fontFamily: {
+              sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+              serif: ['"Source Han Serif SC"', '"Songti SC"', 'SimSun', 'serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif; }
+        .legal-text { font-family: "Source Han Serif SC", "Songti SC", SimSun, serif; line-height: 1.9; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+        .loading-dot { animation: loading 1.4s infinite; }
+        .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes loading {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-60 bg-white border-r border-stone-200 flex flex-col">
+            <div class="h-16 px-6 flex items-center border-b border-stone-200">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-gavel text-white text-sm"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-stone-900">律瞳</div>
+                    <div class="text-[10px] text-stone-500 tracking-wider">LEGAL LENS</div>
+                </div>
+            </div>
+            <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+                <a href="../index.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-house w-4 text-stone-400"></i>工作台</a>
+                <a href="case-list.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-briefcase w-4 text-stone-400"></i>案件库</a>
+                <a href="case-analysis.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-wand-magic-sparkles w-4 text-stone-400"></i>AI 分析</a>
+                <a href="case-search.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-magnifying-glass w-4 text-stone-400"></i>类案检索</a>
+                <a href="contract-review.html" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-stone-100 text-stone-900 font-medium"><i class="fa-solid fa-file-contract w-4 text-stone-500"></i>合同审查<span class="ml-auto text-[9px] bg-accent-500 text-white px-1.5 py-0.5 rounded font-medium">新</span></a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-book-open w-4 text-stone-400"></i>知识库</a>
+                <a href="obsidian.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-feather w-4 text-stone-400"></i>Obsidian</a>
+            </nav>
+            <div class="p-3 border-t border-stone-200">
+                <div class="flex items-center gap-3 px-2 py-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-stone-700 to-stone-900 flex items-center justify-center text-white text-xs font-medium">王</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-stone-900">王律师</div>
+                        <div class="text-[10px] text-stone-500">正天律师事务所</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <header class="h-16 px-8 flex items-center justify-between border-b border-stone-200 bg-white">
+                <div>
+                    <h1 class="text-lg font-semibold text-stone-900">合同审查</h1>
+                    <p class="text-xs text-stone-500 mt-0.5">规则引擎 + RAG + LLM 综合分析，10+ 风险模式 + 5 类合同模板</p>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-8 scrollbar-thin">
+                <div class="max-w-5xl mx-auto space-y-6">
+                    <!-- Input Form -->
+                    <div class="bg-white rounded-xl border border-stone-200 p-6">
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="text-xs font-medium text-stone-700 mb-1.5 block">合同类型</label>
+                                <select id="contract-type" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm">
+                                    <option value="general">通用合同</option>
+                                    <option value="labor">劳动合同</option>
+                                    <option value="sale">买卖合同</option>
+                                    <option value="lease">租赁合同</option>
+                                    <option value="service">服务合同</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-stone-700 mb-1.5 block">审查立场</label>
+                                <select id="user-role" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm">
+                                    <option value="中立">中立</option>
+                                    <option value="我方">我方（保护我方利益）</option>
+                                    <option value="对方">对方（审视对方立场）</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button id="review-btn" class="w-full px-4 py-2 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                    开始审查
+                                </button>
+                            </div>
+                        </div>
+                        <label class="text-sm font-medium text-stone-700 mb-2 block">合同全文</label>
+                        <textarea id="contract-text" rows="14" placeholder="粘贴合同文本..."
+                            class="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg text-xs focus:outline-none focus:border-brand-500 resize-none font-mono"></textarea>
+                        <div class="mt-2 flex items-center gap-2 text-xs text-stone-500">
+                            <span id="char-count">0</span> 字符
+                            <span class="ml-3">💡 试试：</span>
+                            <button class="example-btn text-brand-600 hover:underline" data-type="labor">劳动合同模板</button>
+                            <span>·</span>
+                            <button class="example-btn text-brand-600 hover:underline" data-type="sale">买卖合同模板</button>
+                            <span>·</span>
+                            <button class="example-btn text-brand-600 hover:underline" data-type="lease">租赁合同模板</button>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div id="loading-state" class="hidden bg-white rounded-xl border border-stone-200 p-8 text-center">
+                        <div class="text-stone-400 text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <span>正在审查合同</span>
+                            <span class="loading-dot">.</span>
+                            <span class="loading-dot">.</span>
+                            <span class="loading-dot">.</span>
+                        </div>
+                        <div class="text-xs text-stone-400 mt-2">规则扫描 + RAG 检索 + LLM 分析，约 30-60 秒</div>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="results-container"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = "/legallens";
+
+        // Char count
+        document.getElementById("contract-text").addEventListener("input", e => {
+            document.getElementById("char-count").textContent = e.target.value.length;
+        });
+
+        // Example contracts
+        const EXAMPLES = {
+            labor: `甲方：北京某科技公司
+乙方：张三
+签订日期：2023年8月1日
+
+第一条 合同期限
+本合同期限为3年，自2023年8月1日起至2026年7月31日止。
+
+第二条 工作内容
+乙方担任产品经理，负责产品规划与团队管理。
+
+第三条 工资待遇
+乙方月薪30000元，每月15日发放。
+
+第四条 竞业限制
+乙方离职后2年内不得从事互联网行业相关工作。甲方无需支付任何经济补偿。
+
+第五条 违约责任
+任何一方违约，违约金为人民币100万元。
+
+第六条 争议解决
+本合同未尽事宜，双方协商解决。
+`,
+            sale: `甲方（卖方）：北京某设备公司
+乙方（买方）：上海某制造公司
+
+第一条 标的物
+甲方向乙方销售注塑机5台，型号XYZ-200，规格见附件。
+
+第二条 价款
+总价款人民币200万元，含17%增值税。
+
+第三条 交付方式
+甲方应于2023年12月31日前将货物运送至乙方指定工厂，运费由甲方承担。
+
+第四条 质量保证
+甲方对产品提供1年质保，自验收合格之日起算。
+
+第五条 付款方式
+乙方应于合同签订后7日内支付30%预付款，发货前支付60%，验收合格后支付10%尾款。
+
+第六条 争议解决
+因本合同发生的争议，双方协商解决；协商不成的，提交北京仲裁委员会仲裁。
+`,
+            lease: `出租人：王某
+承租人：李某
+
+第一条 房屋位置
+北京市朝阳区某小区A座1203室，建筑面积85平方米。
+
+第二条 租赁期限
+自2023年9月1日起至2024年8月31日止。
+
+第三条 租金
+月租金8000元，按季支付。
+
+第四条 押金
+押金16000元，租赁期满后无息退还。
+
+第五条 维修责任
+房屋及附属设施的自然损坏由出租人负责维修。
+
+第六条 提前解约
+承租人提前解约需支付2个月租金作为违约金。
+`,
+        };
+
+        document.querySelectorAll(".example-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const type = btn.dataset.type;
+                document.getElementById("contract-type").value = type;
+                document.getElementById("contract-text").value = EXAMPLES[type] || "";
+                document.getElementById("char-count").textContent = (EXAMPLES[type] || "").length;
+            });
+        });
+
+        document.getElementById("review-btn").addEventListener("click", doReview);
+
+        async function doReview() {
+            const text = document.getElementById("contract-text").value.trim();
+            if (!text) {
+                alert("请粘贴合同内容");
+                return;
+            }
+            const contractType = document.getElementById("contract-type").value;
+            const userRole = document.getElementById("user-role").value;
+
+            document.getElementById("loading-state").classList.remove("hidden");
+            document.getElementById("results-container").innerHTML = "";
+            document.getElementById("review-btn").disabled = true;
+            document.getElementById("review-btn").innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 审查中...';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/contract/review`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contract_text: text, contract_type: contractType, user_role: userRole }),
+                });
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+                const data = await res.json();
+                renderResult(data);
+            } catch (e) {
+                document.getElementById("results-container").innerHTML = `
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center">
+                        <i class="fa-solid fa-circle-exclamation text-rose-600 text-2xl mb-2"></i>
+                        <h3 class="text-sm font-semibold text-rose-900 mb-1">审查失败</h3>
+                        <p class="text-xs text-rose-700">${escapeHtml(String(e.message))}</p>
+                    </div>
+                `;
+            } finally {
+                document.getElementById("loading-state").classList.add("hidden");
+                document.getElementById("review-btn").disabled = false;
+                document.getElementById("review-btn").innerHTML = '<i class="fa-solid fa-shield-halved"></i> 开始审查';
+            }
+        }
+
+        function renderResult(data) {
+            const container = document.getElementById("results-container");
+            const riskColors = { high: "rose", medium: "amber", low: "emerald" };
+            const riskIcons = { high: "circle-exclamation", medium: "triangle-exclamation", low: "circle-check" };
+            const riskColor = riskColors[data.risk_level] || "stone";
+
+            const risks = (data.risks || []).map(r => {
+                const color = riskColors[r.level] || "stone";
+                const icon = riskIcons[r.level] || "info-circle";
+                return `
+                <div class="border border-${color}-200 bg-${color}-50 rounded-lg p-4">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-${icon} text-${color}-600 text-lg mt-0.5"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <span class="text-sm font-semibold text-${color}-900">${escapeHtml(r.name)}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 bg-${color}-200 text-${color}-800 rounded uppercase">${r.level}</span>
+                            </div>
+                            <p class="text-xs text-${color}-800 mb-2">${escapeHtml(r.description)}</p>
+                            ${r.excerpt ? `<div class="text-[11px] text-stone-600 bg-white border border-stone-200 rounded p-2 mb-2 legal-text">${escapeHtml(r.excerpt)}</div>` : ''}
+                            <div class="text-xs">
+                                <span class="text-stone-500 font-medium">建议：</span>
+                                <span class="text-stone-700">${escapeHtml(r.suggestion)}</span>
+                            </div>
+                            ${r.law_basis ? `<div class="text-[10px] text-stone-500 mt-1">法律依据：${escapeHtml(r.law_basis)}</div>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+            }).join("");
+
+            const missing = (data.missing_clauses || []).map(m => `
+                <div class="flex items-start gap-2 py-2">
+                    <i class="fa-solid fa-circle-xmark text-amber-500 text-sm mt-0.5"></i>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-stone-900">${escapeHtml(m.name)}</div>
+                        <div class="text-xs text-stone-500 mt-0.5">${escapeHtml(m.description)}</div>
+                    </div>
+                </div>
+            `).join("");
+
+            const citations = (data.legal_citations || []).map(c => `
+                <div class="text-xs text-stone-700 p-2 bg-stone-50 border border-stone-100 rounded">
+                    <div class="font-semibold mb-1">${escapeHtml(c.law_name || '')} ${escapeHtml(c.article_no || '')}</div>
+                    <div class="text-stone-600 text-[11px] legal-text">${escapeHtml((c.article_text || '').slice(0, 150))}...</div>
+                </div>
+            `).join("");
+
+            // LLM analysis
+            const llm = data.llm_analysis || {};
+            const llmHtml = `
+                ${llm.overall_assessment ? `
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-3">
+                    <div class="text-xs font-semibold text-emerald-900 mb-1">📊 整体评价</div>
+                    <p class="text-sm text-emerald-800">${escapeHtml(llm.overall_assessment)}</p>
+                </div>` : ''}
+                ${llm.key_clauses && llm.key_clauses.length ? `
+                <div class="mb-3">
+                    <div class="text-xs font-semibold text-stone-700 mb-2">🔍 重点关注的条款</div>
+                    <div class="space-y-2">${llm.key_clauses.map(c => `
+                        <div class="text-xs text-stone-700 p-2 bg-amber-50 border border-amber-200 rounded">
+                            <div class="font-semibold">${escapeHtml(c.clause || '')}</div>
+                            <div class="text-stone-600 mt-1">问题：${escapeHtml(c.issue || '')}</div>
+                            <div class="text-stone-600 mt-0.5">影响：${escapeHtml(c.impact || '')}</div>
+                        </div>
+                    `).join('')}</div>
+                </div>` : ''}
+                ${llm.priority_modifications && llm.priority_modifications.length ? `
+                <div class="mb-3">
+                    <div class="text-xs font-semibold text-stone-700 mb-2">✏️ 建议优先修改</div>
+                    <div class="space-y-2">${llm.priority_modifications.map(m => `
+                        <div class="text-xs text-stone-700 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <div class="font-semibold">${escapeHtml(m.clause || '')}</div>
+                            <div class="text-stone-600 mt-1">当前：${escapeHtml(m.current || '')}</div>
+                            <div class="text-stone-900 font-medium mt-1">→ 建议：${escapeHtml(m.suggested || '')}</div>
+                        </div>
+                    `).join('')}</div>
+                </div>` : ''}
+            `;
+
+            container.innerHTML = `
+                <!-- 概览 -->
+                <div class="bg-gradient-to-br from-${riskColor}-500 to-${riskColor}-700 text-white rounded-xl p-6">
+                    <div class="flex items-start justify-between mb-3">
+                        <div>
+                            <div class="text-xs text-${riskColor}-100 mb-1">合同审查报告</div>
+                            <h2 class="text-lg font-semibold">${data.risk_level === 'high' ? '⚠️ 高风险' : data.risk_level === 'medium' ? '⚡ 中等风险' : '✅ 低风险'}</h2>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-${riskColor}-100">合同类型</div>
+                            <div class="text-sm font-medium">${escapeHtml(contractType)}</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-${riskColor}-50">${escapeHtml(data.summary || '')}</p>
+                </div>
+
+                <!-- LLM 分析 -->
+                ${llmHtml ? `<div class="bg-white rounded-xl border border-stone-200 p-6"><h3 class="text-sm font-semibold text-stone-900 mb-3">🤖 AI 综合分析（多 Agent 校验）</h3>${llmHtml}</div>` : ''}
+
+                <!-- 风险点 -->
+                ${risks ? `<div class="bg-white rounded-xl border border-stone-200 p-6">
+                    <h3 class="text-sm font-semibold text-stone-900 mb-3">⚠️ 风险点（规则引擎扫描 ${data.risks.length} 项）</h3>
+                    <div class="space-y-3">${risks}</div>
+                </div>` : ''}
+
+                <!-- 缺失条款 -->
+                ${missing ? `<div class="bg-white rounded-xl border border-stone-200 p-6">
+                    <h3 class="text-sm font-semibold text-stone-900 mb-3">📋 缺失的必备条款（${data.missing_clauses.length} 项）</h3>
+                    <div class="divide-y divide-stone-100">${missing}</div>
+                </div>` : ''}
+
+                <!-- 引用法条 -->
+                ${citations ? `<div class="bg-white rounded-xl border border-stone-200 p-6">
+                    <h3 class="text-sm font-semibold text-stone-900 mb-3">📖 相关法条（RAG 检索 ${data.legal_citations.length} 条）</h3>
+                    <div class="space-y-2">${citations}</div>
+                </div>` : ''}
+
+                <div class="text-center text-[11px] text-stone-400 py-4">
+                    <i class="fa-solid fa-shield-halved mr-1"></i>
+                    AI 审查结果仅供参考，最终合同签署前请咨询执业律师
+                </div>
+            `;
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+    </script>
+</body>
+</html>
