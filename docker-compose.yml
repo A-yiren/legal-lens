@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: legal-lens-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"      # REST API
+      - "6334:6334"      # gRPC
+    volumes:
+      - ./storage/qdrant:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legal-lens-backend
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - LLM_API_KEY=${MiniMax_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.minimaxi.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-abab6.5s-chat}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./storage:/app/storage
+      - ./obsidian_vault:/obsidian_vault
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python -c 'from app.storage.qdrant_client import vector_store; vector_store.init_collection()' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8765
+      "

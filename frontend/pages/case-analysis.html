@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>案件分析 — 律瞳</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#0c4a3e', 600: '#0a3d33', 700: '#083029' },
+              accent: { 500: '#d97706', 600: '#b45309' }
+            },
+            fontFamily: {
+              sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+              serif: ['"Source Han Serif SC"', '"Songti SC"', 'SimSun', 'serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif; }
+        .legal-text { font-family: "Source Han Serif SC", "Songti SC", SimSun, serif; line-height: 1.9; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+        .citation {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 20px; height: 20px; padding: 0 6px;
+            background: #fef3c7; color: #b45309; border-radius: 4px;
+            font-size: 11px; font-weight: 500; cursor: pointer;
+            margin: 0 2px; vertical-align: baseline; line-height: 1;
+            transition: all 0.15s;
+        }
+        .citation:hover { background: #fde68a; transform: translateY(-1px); }
+        .citation.active { background: #b45309; color: white; }
+        .typing-dot { animation: typing 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-60 bg-white border-r border-stone-200 flex flex-col">
+            <div class="h-16 px-6 flex items-center border-b border-stone-200">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-gavel text-white text-sm"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-stone-900">律瞳</div>
+                    <div class="text-[10px] text-stone-500 tracking-wider">LEGAL LENS</div>
+                </div>
+            </div>
+            <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+                <a href="../index.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-house w-4 text-stone-400"></i>工作台</a>
+                <a href="case-list.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-briefcase w-4 text-stone-400"></i>案件库</a>
+                <a href="case-analysis.html" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-stone-100 text-stone-900 font-medium"><i class="fa-solid fa-wand-magic-sparkles w-4 text-stone-500"></i>AI 分析<span class="ml-auto text-[9px] bg-accent-500 text-white px-1.5 py-0.5 rounded font-medium">核心</span></a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-book-open w-4 text-stone-400"></i>知识库</a>
+                <a href="obsidian.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-feather w-4 text-stone-400"></i>Obsidian</a>
+            </nav>
+            <div class="p-3 border-t border-stone-200">
+                <div class="flex items-center gap-3 px-2 py-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-stone-700 to-stone-900 flex items-center justify-center text-white text-xs font-medium">王</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-stone-900">王律师</div>
+                        <div class="text-[10px] text-stone-500">正天律师事务所</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main: 三栏布局 -->
+        <main class="flex-1 flex overflow-hidden">
+            <!-- 左栏：案情输入 -->
+            <div class="w-[420px] bg-white border-r border-stone-200 flex flex-col">
+                <div class="px-6 py-4 border-b border-stone-200">
+                    <h1 class="text-base font-semibold text-stone-900">案情描述</h1>
+                    <p class="text-xs text-stone-500 mt-1">详细描述案件经过，AI 将基于知识库检索相关法律条文</p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto scrollbar-thin p-6">
+                    <div class="mb-4">
+                        <label class="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2 block">案情经过</label>
+                        <textarea id="case-input" rows="14" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 legal-text" placeholder="例如：
+2023 年 3 月，原告与被告签订《软件开发合同》，约定被告为原告开发 ERP 系统，总价款 128 万元，开发周期 6 个月。原告支付首期款 51.2 万元。被告多次延期，至 2023 年 12 月仍未完成核心模块。原告多次催告后，被告于 2024 年 1 月单方面通知解除合同。原告认为被告构成根本违约。"></textarea>
+                    </div>
+
+                    <div class="mb-4 grid grid-cols-2 gap-2">
+                        <select id="top-k" class="px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs">
+                            <option value="5">检索 5 条法条</option>
+                            <option value="8" selected>检索 8 条法条</option>
+                            <option value="12">检索 12 条法条</option>
+                        </select>
+                        <select id="law-filter" class="px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs">
+                            <option value="">所有法律</option>
+                        </select>
+                    </div>
+
+                    <button id="analyze-btn" class="w-full py-3 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:bg-stone-300 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>开始 AI 分析
+                    </button>
+
+                    <div class="mt-4 p-3 bg-stone-50 rounded-lg text-xs text-stone-600 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-stone-400 mr-1"></i>
+                        <strong>小贴士</strong>：案情描述越具体（涉及金额、日期、违约情形等），AI 检索越精准。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中栏：AI 分析结果 -->
+            <div class="flex-1 flex flex-col overflow-hidden bg-stone-50">
+                <div class="px-8 py-4 bg-white border-b border-stone-200 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-semibold text-stone-900 flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-accent-500"></i>
+                            AI 法律分析报告
+                        </h2>
+                        <p class="text-xs text-stone-500 mt-0.5" id="model-info">基于知识库真实法律条文</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="status-badge" class="hidden px-2 py-1 bg-stone-100 text-stone-700 text-xs rounded-full">
+                            <i class="fa-solid fa-spinner fa-spin mr-1"></i>分析中
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto scrollbar-thin">
+                    <!-- 初始空状态 -->
+                    <div id="empty-state" class="flex items-center justify-center h-full">
+                        <div class="text-center px-8 max-w-md">
+                            <i class="fa-solid fa-wand-magic-sparkles text-4xl text-stone-300 mb-4"></i>
+                            <h3 class="text-base font-semibold text-stone-700 mb-2">开始你的第一次法律分析</h3>
+                            <p class="text-sm text-stone-500 leading-relaxed">在左侧输入案件描述，点击"开始 AI 分析"，AI 将从知识库检索相关法律条文并生成结构化分析报告。</p>
+                            <button id="try-example" class="mt-4 px-4 py-2 border border-stone-200 text-stone-700 text-xs rounded-lg hover:bg-stone-50">
+                                <i class="fa-solid fa-flask mr-1"></i>试用示例案情
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 分析中状态 -->
+                    <div id="loading-state" class="hidden max-w-3xl mx-auto px-8 py-8">
+                        <div class="bg-white border border-stone-200 rounded-xl p-8 text-center">
+                            <div class="inline-flex items-center gap-2 text-stone-700">
+                                <span class="w-2 h-2 bg-brand-500 rounded-full typing-dot"></span>
+                                <span class="w-2 h-2 bg-brand-500 rounded-full typing-dot"></span>
+                                <span class="w-2 h-2 bg-brand-500 rounded-full typing-dot"></span>
+                                <span class="ml-2 text-sm" id="loading-text">正在检索相关法律条文...</span>
+                            </div>
+                            <p class="text-xs text-stone-500 mt-3">基于 BGE-M3 混合检索 + BGE-Reranker 重排序</p>
+                        </div>
+                    </div>
+
+                    <!-- 分析结果 -->
+                    <div id="result-state" class="hidden max-w-3xl mx-auto px-8 py-8 space-y-6">
+                        <!-- JS 动态填充 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右栏：引用法条 -->
+            <div class="w-[380px] bg-white border-l border-stone-200 flex flex-col">
+                <div class="px-5 py-4 border-b border-stone-200">
+                    <h3 class="text-sm font-semibold text-stone-900 flex items-center justify-between">
+                        <span><i class="fa-solid fa-quote-left text-stone-400 mr-2"></i>引用法条</span>
+                        <span class="text-[10px] text-stone-500" id="cite-count">0 条</span>
+                    </h3>
+                    <p class="text-[11px] text-stone-500 mt-1">点击分析中的引用标记，定位原文</p>
+                </div>
+
+                <div id="citations-container" class="flex-1 overflow-y-auto scrollbar-thin">
+                    <div class="px-5 py-8 text-center text-xs text-stone-500">
+                        尚未开始分析
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = "/legallens";
+        const EXAMPLE_CASE = `2023 年 3 月，原告张某与被告某科技公司签订《软件定制开发合同》，约定被告为原告开发一套企业 ERP 系统，合同总价款 128 万元，开发周期 6 个月。
+
+合同签订后，原告依约支付了首期款 51.2 万元（合同总价 40%）。但被告在开发过程中多次延期，至 2023 年 12 月仍未完成核心模块开发。
+
+经原告多次催告，被告于 2024 年 1 月单方面通知原告解除合同，并拒绝返还原告已付款项。
+
+原告认为被告构成根本违约，应返还已付款项并赔偿损失。请问：
+1. 被告延期交付是否构成违约？违约程度如何？
+2. 被告单方通知解除合同的效力如何认定？
+3. 原告主张的返还已付款及赔偿损失的法律依据？`;
+
+        let currentResult = null;
+
+        // 事件绑定
+        document.getElementById('analyze-btn').addEventListener('click', runAnalysis);
+        document.getElementById('try-example').addEventListener('click', () => {
+            document.getElementById('case-input').value = EXAMPLE_CASE;
+        });
+
+        // 加载可选法律过滤
+        async function loadLawFilter() {
+            try {
+                const res = await fetch(`${API_BASE}/api/knowledge/documents?source=seed&limit=100`);
+                const docs = await res.json();
+                const sel = document.getElementById('law-filter');
+                const laws = new Set();
+                docs.forEach(d => {
+                    if (d.metadata && d.metadata.law_name) laws.add(d.metadata.law_name);
+                });
+                laws.forEach(law => {
+                    const opt = document.createElement('option');
+                    opt.value = law;
+                    opt.textContent = law;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                console.warn('加载法律列表失败', e);
+            }
+        }
+
+        async function runAnalysis() {
+            const caseDesc = document.getElementById('case-input').value.trim();
+            if (!caseDesc) {
+                alert('请先输入案情描述');
+                return;
+            }
+
+            const topK = parseInt(document.getElementById('top-k').value);
+            const lawFilter = document.getElementById('law-filter').value;
+            const filters = lawFilter ? { law_name: lawFilter } : null;
+
+            // UI 状态
+            document.getElementById('analyze-btn').disabled = true;
+            document.getElementById('analyze-btn').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>分析中...';
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('result-state').classList.add('hidden');
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('status-badge').classList.remove('hidden');
+            document.getElementById('citations-container').innerHTML = '<div class="px-5 py-8 text-center text-xs text-stone-500">正在检索...</div>';
+
+            // 加载状态文本
+            const loadingTexts = [
+                '正在解析案情...',
+                '正在检索相关法律条文...',
+                '正在进行混合检索（Dense + Sparse）...',
+                '正在重排序...',
+                '正在生成结构化分析...',
+            ];
+            let textIdx = 0;
+            const textInterval = setInterval(() => {
+                textIdx = (textIdx + 1) % loadingTexts.length;
+                document.getElementById('loading-text').textContent = loadingTexts[textIdx];
+            }, 1500);
+
+            try {
+                const res = await fetch(`${API_BASE}/api/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        case_description: caseDesc,
+                        top_k: topK,
+                        filters: filters,
+                    })
+                });
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+                }
+                const result = await res.json();
+                currentResult = result;
+                clearInterval(textInterval);
+                renderResult(result);
+            } catch (e) {
+                clearInterval(textInterval);
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('result-state').classList.remove('hidden');
+                document.getElementById('result-state').innerHTML = `
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center">
+                        <i class="fa-solid fa-circle-exclamation text-rose-600 text-2xl mb-2"></i>
+                        <h3 class="text-sm font-semibold text-rose-900 mb-1">分析失败</h3>
+                        <p class="text-xs text-rose-700">${e.message}</p>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('analyze-btn').disabled = false;
+                document.getElementById('analyze-btn').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>开始 AI 分析';
+                document.getElementById('status-badge').classList.add('hidden');
+            }
+        }
+
+        function renderResult(result) {
+            // 渲染引用
+            renderCitations(result.citations || []);
+
+            // 渲染主体
+            const html = [];
+
+            // 概览卡片
+            const confidence = Math.round((result.confidence || 0) * 100);
+            // 4 Agent pipeline 标识
+            const pipeline = result.agent_pipeline || {};
+            const agentsUsed = result.agents_used || [];
+            const hallucinated = pipeline.a3_hallucinated_citations || 0;
+            const validated = pipeline.a3_validated_citations || 0;
+            html.push(`
+                <div class="bg-gradient-to-br from-brand-500 to-brand-700 text-white rounded-xl p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <div class="text-xs text-stone-200 mb-1">案件类型识别 · 4 Agent 协同校验</div>
+                            <h3 class="text-lg font-semibold">AI 案件分析报告</h3>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-stone-200">AI 置信度</div>
+                            <div class="text-2xl font-semibold">${confidence}%</div>
+                            <div class="text-[10px] text-stone-300 mt-0.5">基于校验通过率</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 pt-4 border-t border-white/10">
+                        <div>
+                            <div class="text-xs text-stone-200">引用法条</div>
+                            <div class="text-sm font-medium mt-0.5">${(result.citations || []).length} 条</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-stone-200">分析维度</div>
+                            <div class="text-sm font-medium mt-0.5">${(result.case_focus || []).length} 焦点</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-stone-200">风险/建议</div>
+                            <div class="text-sm font-medium mt-0.5">${(result.risks || []).length + (result.next_steps || []).length} 项</div>
+                        </div>
+                    </div>
+                    ${agentsUsed.length ? `
+                    <div class="mt-4 pt-3 border-t border-white/10 flex flex-wrap gap-1.5 text-[10px]">
+                        ${agentsUsed.map(a => {
+                            const labels = { 'A1_focus': 'A1 焦点', 'A2_analysis': 'A2 分析', 'A3_validator': 'A3 校验', 'A4_risk': 'A4 风险' };
+                            return `<span class="px-1.5 py-0.5 bg-white/10 rounded text-stone-100">${labels[a] || a}</span>`;
+                        }).join('')}
+                        ${hallucinated > 0 ? `<span class="px-1.5 py-0.5 bg-rose-500/30 rounded text-rose-100" title="A3 引用校验 Agent 标记为'不直接支持'的引用，已自动剔除"><i class="fa-solid fa-circle-xmark mr-0.5"></i>剔除 ${hallucinated} 条幻觉引用</span>` : ''}
+                        ${validated > 0 && hallucinated === 0 ? `<span class="px-1.5 py-0.5 bg-emerald-500/30 rounded text-emerald-100"><i class="fa-solid fa-circle-check mr-0.5"></i>${validated} 条引用全通过校验</span>` : ''}
+                    </div>
+                    ` : ''}
+                </div>
+            `);
+
+            // 案件焦点
+            if (result.case_focus && result.case_focus.length) {
+                html.push(`
+                    <div class="bg-white border border-stone-200 rounded-xl p-6">
+                        <h3 class="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center">1</span>
+                            案件焦点识别
+                        </h3>
+                        <ul class="space-y-2 text-sm text-stone-700">
+                            ${result.case_focus.map((f, i) => `
+                                <li class="flex gap-2"><span class="text-stone-400">${i+1}</span><span>${escapeHtml(f)}</span></li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `);
+            }
+
+            // 法律分析
+            if (result.legal_analysis && result.legal_analysis.length) {
+                const analysisHtml = result.legal_analysis.map(item => {
+                    let point = escapeHtml(item.point || '');
+                    // 把 [1][2] 转成可点击引用气泡
+                    if (item.citations && item.citations.length) {
+                        item.citations.forEach(id => {
+                            point = point.replaceAll(`[${id}]`, `<span class="citation" data-cite="${id}">[${id}]</span>`);
+                        });
+                    }
+                    return `<p class="legal-text">${point}</p>`;
+                }).join('');
+
+                html.push(`
+                    <div class="bg-white border border-stone-200 rounded-xl p-6">
+                        <h3 class="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center">2</span>
+                            法律分析
+                        </h3>
+                        <div class="space-y-4">${analysisHtml}</div>
+                    </div>
+                `);
+            }
+
+            // 风险
+            if (result.risks && result.risks.length) {
+                html.push(`
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                        <h3 class="text-sm font-semibold text-amber-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                            风险点提示
+                        </h3>
+                        <ul class="space-y-2 text-sm text-amber-900">
+                            ${result.risks.map(r => `<li class="flex gap-2"><i class="fa-solid fa-circle-exclamation text-amber-600 mt-1 text-xs"></i><span>${escapeHtml(r)}</span></li>`).join('')}
+                        </ul>
+                    </div>
+                `);
+            }
+
+            // 下一步
+            if (result.next_steps && result.next_steps.length) {
+                html.push(`
+                    <div class="bg-white border border-stone-200 rounded-xl p-6">
+                        <h3 class="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-stone-900 text-white text-xs flex items-center justify-center">3</span>
+                            下一步建议
+                        </h3>
+                        <ol class="space-y-3 text-sm text-stone-700">
+                            ${result.next_steps.map((s, i) => `
+                                <li class="flex gap-3">
+                                    <span class="w-5 h-5 rounded-full bg-stone-100 text-stone-600 text-xs flex items-center justify-center flex-shrink-0">${i+1}</span>
+                                    <span>${escapeHtml(s)}</span>
+                                </li>
+                            `).join('')}
+                        </ol>
+                    </div>
+                `);
+            }
+
+            // 免责声明
+            html.push(`
+                <div class="text-center text-[11px] text-stone-400 py-4 space-y-1">
+                    <div><i class="fa-solid fa-shield-halved mr-1"></i>
+                    AI 生成内容仅供参考，最终法律意见以执业律师专业判断为准</div>
+                    ${result.disclaimer ? `<div class="text-[10px]">${escapeHtml(result.disclaimer)}</div>` : ''}
+                    <div class="text-[10px] text-stone-300">
+                        <i class="fa-solid fa-microchip mr-0.5"></i>
+                        多 Agent 校验：A1 焦点识别 → A2 法律分析 → A3 引用真实性校验 → A4 风险评估
+                    </div>
+                </div>
+            `);
+
+            const resultEl = document.getElementById('result-state');
+            resultEl.innerHTML = html.join('');
+            resultEl.classList.remove('hidden');
+            document.getElementById('loading-state').classList.add('hidden');
+
+            // 绑定引用气泡点击
+            resultEl.querySelectorAll('.citation').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = el.dataset.cite;
+                    document.querySelectorAll('.citation').forEach(c => c.classList.remove('active'));
+                    document.querySelectorAll(`.citation[data-cite="${id}"]`).forEach(c => c.classList.add('active'));
+                    // 滚动右侧
+                    const target = document.querySelector(`#cite-card-${id}`);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        target.classList.add('ring-2', 'ring-accent-500');
+                        setTimeout(() => target.classList.remove('ring-2', 'ring-accent-500'), 2000);
+                    }
+                });
+            });
+        }
+
+        function renderCitations(citations) {
+            const container = document.getElementById('citations-container');
+            document.getElementById('cite-count').textContent = `${citations.length} 条`;
+            if (citations.length === 0) {
+                container.innerHTML = '<div class="px-5 py-8 text-center text-xs text-stone-500">未检索到相关法条</div>';
+                return;
+            }
+            container.innerHTML = citations.map(c => {
+                // 派生 doc_id（chunk_id 格式：{doc_id}-c{index:04d}）
+                const chunkId = c.source_chunk_id || '';
+                const docId = Array.isArray(chunkId) ? (chunkId[0] || '').split('-c')[0] : chunkId.split('-c')[0];
+                // 官方源链接
+                const sourceUrl = c.source_url || '';
+                const sourceBadge = sourceUrl
+                    ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded" title="${escapeHtml(sourceUrl)}">
+                            <i class="fa-solid fa-check-circle"></i>官方源
+                       </a>`
+                    : '';
+                const sourceDomain = c.source_domain || (sourceUrl ? (new URL(sourceUrl)).hostname : '');
+                const publisher = c.publisher || '';
+                const lawStatus = c.law_status || '';
+                // 跳转原文预览
+                const previewLink = docId
+                    ? `<a href="knowledge-base.html?preview=${docId}" target="_blank" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-stone-100 text-stone-600 hover:bg-stone-200 rounded" title="在知识库中查看完整原文">
+                            <i class="fa-solid fa-book-open"></i>原文
+                       </a>`
+                    : '';
+
+                return `
+                <div id="cite-card-${c.id}" class="px-5 py-4 border-b border-stone-100 transition-all">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="citation" data-cite="${c.id}">${c.id}</span>
+                            <span class="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded">${c.status || '有效'}</span>
+                            ${sourceBadge}
+                            ${previewLink}
+                        </div>
+                        <span class="text-[10px] text-stone-400">${(c.similarity * 100).toFixed(0)}%</span>
+                    </div>
+                    <h4 class="text-sm font-semibold text-stone-900 mb-1">${escapeHtml(c.law_name || '')}</h4>
+                    <p class="text-[11px] text-stone-500 mb-2">${escapeHtml(c.article_no || '')}</p>
+                    <div class="text-xs text-stone-700 leading-relaxed legal-text p-3 bg-stone-50 border border-stone-100 rounded-lg mb-2">
+                        ${escapeHtml((c.article_text || '').slice(0, 400))}${(c.article_text || '').length > 400 ? '...' : ''}
+                    </div>
+                    ${sourceDomain || publisher || lawStatus ? `
+                    <div class="text-[10px] text-stone-500 leading-relaxed border-t border-stone-100 pt-2 space-y-0.5">
+                        ${sourceDomain ? `<div><i class="fa-solid fa-globe text-stone-400 mr-1"></i>${escapeHtml(sourceDomain)}</div>` : ''}
+                        ${publisher ? `<div><i class="fa-solid fa-building text-stone-400 mr-1"></i>${escapeHtml(publisher)}</div>` : ''}
+                        ${lawStatus ? `<div><i class="fa-solid fa-clock-rotate-left text-stone-400 mr-1"></i>${escapeHtml(lawStatus)}</div>` : ''}
+                    </div>
+                    ` : ''}
+                </div>
+            `}).join('');
+
+            container.querySelectorAll('.citation').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = el.dataset.cite;
+                    document.querySelectorAll('.citation').forEach(c => c.classList.remove('active'));
+                    document.querySelectorAll(`.citation[data-cite="${id}"]`).forEach(c => c.classList.add('active'));
+                    const main = document.querySelector(`.citation[data-cite="${id}"]`);
+                    if (main) main.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            });
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+
+        loadLawFilter();
+    </script>
+</body>
+</html>

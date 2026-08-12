@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>案件库 — 律瞳</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#0c4a3e', 600: '#0a3d33', 700: '#083029' },
+              accent: { 500: '#d97706', 600: '#b45309' }
+            },
+            fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-60 bg-white border-r border-stone-200 flex flex-col">
+            <div class="h-16 px-6 flex items-center border-b border-stone-200">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-gavel text-white text-sm"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-stone-900">律瞳</div>
+                    <div class="text-[10px] text-stone-500 tracking-wider">LEGAL LENS</div>
+                </div>
+            </div>
+            <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+                <a href="../index.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-house w-4 text-stone-400"></i>工作台</a>
+                <a href="case-list.html" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-stone-100 text-stone-900 font-medium"><i class="fa-solid fa-briefcase w-4 text-stone-500"></i>案件库</a>
+                <a href="case-analysis.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-wand-magic-sparkles w-4 text-stone-400"></i>AI 分析</a>
+                <a href="knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-book-open w-4 text-stone-400"></i>知识库</a>
+                <a href="obsidian.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-feather w-4 text-stone-400"></i>Obsidian</a>
+            </nav>
+            <div class="p-3 border-t border-stone-200">
+                <div class="flex items-center gap-3 px-2 py-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-stone-700 to-stone-900 flex items-center justify-center text-white text-xs font-medium">王</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-stone-900">王律师</div>
+                        <div class="text-[10px] text-stone-500">正天律师事务所</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <header class="h-16 bg-white border-b border-stone-200 px-8 flex items-center gap-6">
+                <h1 class="text-lg font-semibold text-stone-900">案件库</h1>
+                <div class="flex-1 max-w-md">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm"></i>
+                        <input type="text" placeholder="搜索案件..." class="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+                    </div>
+                </div>
+                <a href="case-analysis.html" class="ml-2 inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600">
+                    <i class="fa-solid fa-plus text-xs"></i>新建案件
+                </a>
+            </header>
+
+            <div class="flex-1 overflow-y-auto scrollbar-thin">
+                <div class="max-w-7xl mx-auto px-8 py-6">
+                    <!-- 案件列表 -->
+                    <div class="bg-white border border-stone-200 rounded-xl" id="cases-container">
+                        <div class="px-6 py-8 text-center text-sm text-stone-500">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = "";
+        async function loadCases() {
+            try {
+                const res = await fetch(`${API_BASE}/api/cases`);
+                const cases = await res.json();
+                renderCases(cases);
+            } catch (e) {
+                document.getElementById('cases-container').innerHTML = '<div class="px-6 py-8 text-center text-rose-500 text-sm">加载失败，请确认服务已启动</div>';
+            }
+        }
+
+        function renderCases(cases) {
+            const container = document.getElementById('cases-container');
+            if (cases.length === 0) {
+                container.innerHTML = `
+                    <div class="px-6 py-16 text-center">
+                        <i class="fa-solid fa-briefcase text-4xl text-stone-300 mb-4"></i>
+                        <h3 class="text-base font-semibold text-stone-700 mb-2">还没有案件</h3>
+                        <p class="text-sm text-stone-500 mb-4">从 AI 分析开始创建一个案件</p>
+                        <a href="case-analysis.html" class="inline-block px-4 py-2 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600">
+                            <i class="fa-solid fa-plus mr-1.5"></i>新建案件
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            container.innerHTML = `
+                <div class="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
+                    <h2 class="font-semibold text-stone-900">所有案件</h2>
+                    <span class="text-xs text-stone-500">共 ${cases.length} 个</span>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="bg-stone-50 border-b border-stone-200 text-xs text-stone-500 uppercase tracking-wider">
+                        <tr>
+                            <th class="text-left px-6 py-3 font-medium">案件名称</th>
+                            <th class="text-left px-4 py-3 font-medium">案号</th>
+                            <th class="text-left px-4 py-3 font-medium">客户</th>
+                            <th class="text-left px-4 py-3 font-medium">案由</th>
+                            <th class="text-right px-4 py-3 font-medium">标的</th>
+                            <th class="text-left px-4 py-3 font-medium">状态</th>
+                            <th class="text-left px-4 py-3 font-medium">更新时间</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        ${cases.map(c => `
+                            <tr class="hover:bg-stone-50">
+                                <td class="px-6 py-3">
+                                    <a href="case-analysis.html?case_id=${c.id}" class="text-stone-900 font-medium hover:text-brand-500">${escapeHtml(c.title)}</a>
+                                </td>
+                                <td class="px-4 py-3 text-stone-500 font-mono text-xs">${escapeHtml(c.case_no || '-')}</td>
+                                <td class="px-4 py-3 text-stone-700">${escapeHtml(c.client || '-')}</td>
+                                <td class="px-4 py-3"><span class="text-[10px] px-2 py-0.5 bg-stone-100 text-stone-600 rounded">${escapeHtml(c.case_type || '-')}</span></td>
+                                <td class="px-4 py-3 text-right text-stone-900 font-medium">${c.amount ? '¥' + c.amount.toLocaleString() : '-'}</td>
+                                <td class="px-4 py-3">${statusBadge(c.status)}</td>
+                                <td class="px-4 py-3 text-stone-500 text-xs">${formatTime(c.updated_at)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function statusBadge(status) {
+            const map = {
+                'draft': ['草稿', 'bg-blue-50 text-blue-700'],
+                'processing': ['进行中', 'bg-amber-50 text-accent-600'],
+                'done': ['已完成', 'bg-emerald-50 text-emerald-700'],
+                'closed': ['已结案', 'bg-stone-100 text-stone-600'],
+            };
+            const [label, color] = map[status] || [status, 'bg-stone-100 text-stone-600'];
+            return `<span class="text-[10px] px-2 py-0.5 ${color} rounded">${label}</span>`;
+        }
+
+        function formatTime(iso) {
+            if (!iso) return '-';
+            const d = new Date(iso);
+            return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+
+        loadCases();
+    </script>
+</body>
+</html>

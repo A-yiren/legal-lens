@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>律瞳 LegalLens — 律师专属 AI 案件分析平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif; }
+        .legal-text { font-family: "Source Han Serif SC", "Songti SC", SimSun, serif; line-height: 1.9; }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+        .citation { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;background:#fef3c7;color:#b45309;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;margin:0 2px;vertical-align:baseline;line-height:1; }
+        .citation:hover { background:#fde68a;transform:translateY(-1px); }
+        .citation.active { background:#b45309;color:white; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-60 bg-white border-r border-stone-200 flex flex-col">
+            <div class="h-16 px-6 flex items-center border-b border-stone-200">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center mr-3" style="background:linear-gradient(135deg,#0c4a3e,#083029);">
+                    <i class="fa-solid fa-gavel text-white text-sm"></i>
+                </div>
+                <div>
+                    <div class="font-semibold text-stone-900">律瞳</div>
+                    <div class="text-[10px] text-stone-500 tracking-wider">LEGAL LENS</div>
+                </div>
+            </div>
+            <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+                <a href="index.html" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-stone-100 text-stone-900 font-medium"><i class="fa-solid fa-house w-4 text-stone-500"></i>工作台</a>
+                <a href="pages/case-analysis.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-wand-magic-sparkles w-4 text-stone-400"></i>AI 分析<span class="ml-auto text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-medium" style="background:#d97706">核心</span></a>
+                <a href="pages/knowledge-base.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-book-open w-4 text-stone-400"></i>知识库</a>
+                <a href="pages/obsidian.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-stone-600 hover:bg-stone-50"><i class="fa-solid fa-feather w-4 text-stone-400"></i>Obsidian</a>
+            </nav>
+            <div class="p-3 border-t border-stone-200 text-[10px] text-stone-400 leading-relaxed">
+                <p class="mb-1"><i class="fa-solid fa-circle-info text-amber-500 mr-1"></i>本地演示版</p>
+                <p>需本机启动后端服务（端口 8765）才能调用真实 API。本页调用真实后端，所有数据来自 Qdrant 向量库。</p>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <header class="h-16 bg-white border-b border-stone-200 px-8 flex items-center gap-6">
+                <h1 class="text-lg font-semibold text-stone-900">工作台</h1>
+                <span class="text-xs text-stone-500" id="health-status">连接中...</span>
+                <div class="flex-1"></div>
+                <a href="pages/case-analysis.html" class="ml-2 inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600" style="background:#0c4a3e">
+                    <i class="fa-solid fa-plus text-xs"></i>新建案件分析
+                </a>
+            </header>
+
+            <div class="flex-1 overflow-y-auto scrollbar-thin">
+                <div class="max-w-7xl mx-auto px-8 py-8">
+                    <!-- 系统状态 -->
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white border border-stone-200 rounded-xl p-5">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center"><i class="fa-solid fa-book text-emerald-700 text-sm"></i></div>
+                            </div>
+                            <div class="text-2xl font-semibold text-stone-900" id="stat-docs">--</div>
+                            <div class="text-xs text-stone-500 mt-1">法律文档</div>
+                        </div>
+                        <div class="bg-white border border-stone-200 rounded-xl p-5">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center"><i class="fa-solid fa-puzzle-piece text-amber-600 text-sm"></i></div>
+                            </div>
+                            <div class="text-2xl font-semibold text-stone-900" id="stat-chunks">--</div>
+                            <div class="text-xs text-stone-500 mt-1">法条片段</div>
+                        </div>
+                        <div class="bg-white border border-stone-200 rounded-xl p-5">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center"><i class="fa-solid fa-vector-square text-stone-600 text-sm"></i></div>
+                            </div>
+                            <div class="text-2xl font-semibold text-stone-900" id="stat-vectors">--</div>
+                            <div class="text-xs text-stone-500 mt-1">向量索引</div>
+                        </div>
+                        <div class="bg-white border border-stone-200 rounded-xl p-5">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center"><i class="fa-solid fa-wand-magic-sparkles text-stone-600 text-sm"></i></div>
+                            </div>
+                            <div class="text-2xl font-semibold text-stone-900" id="stat-llm">--</div>
+                            <div class="text-xs text-stone-500 mt-1">LLM 模型</div>
+                        </div>
+                    </div>
+
+                    <!-- CTA -->
+                    <div class="bg-gradient-to-br from-emerald-800 to-emerald-900 rounded-xl p-6 text-white mb-6 flex items-center justify-between" style="background:linear-gradient(135deg,#0c4a3e,#083029);">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-1">开始一个案件分析</h3>
+                            <p class="text-sm text-stone-300">真实 RAG 引擎 · BGE-M3 检索 · MiniMax 生成 · 引用溯源</p>
+                        </div>
+                        <a href="pages/case-analysis.html" class="px-5 py-2.5 bg-white text-emerald-800 text-sm font-medium rounded-lg hover:bg-stone-50" style="color:#0c4a3e">
+                            立即开始 <i class="fa-solid fa-arrow-right text-xs ml-1"></i>
+                        </a>
+                    </div>
+
+                    <!-- 文档列表 -->
+                    <div class="bg-white border border-stone-200 rounded-xl">
+                        <div class="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
+                            <h2 class="font-semibold text-stone-900">已入库法律</h2>
+                            <a href="pages/knowledge-base.html" class="text-xs text-stone-500 hover:text-stone-900">查看全部 →</a>
+                        </div>
+                        <div id="doc-list" class="divide-y divide-stone-100">
+                            <div class="px-6 py-8 text-center text-sm text-stone-500">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8765";
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_BASE}/api/health`);
+                const data = await res.json();
+                document.getElementById('health-status').innerHTML = '<span class="text-emerald-600">● 服务已连接</span> · ' + data.app + ' v' + data.version;
+                document.getElementById('stat-docs').textContent = data.doc_count;
+                document.getElementById('stat-vectors').textContent = data.vector_count.toLocaleString();
+                document.getElementById('stat-llm').textContent = data.llm_model.includes('abab') ? 'MiniMax' : data.llm_model;
+                const docsRes = await fetch(`${API_BASE}/api/knowledge/documents?limit=1000`);
+                const docs = await docsRes.json();
+                const totalChunks = docs.reduce((s, d) => s + (d.chunks_count || 0), 0);
+                document.getElementById('stat-chunks').textContent = totalChunks.toLocaleString();
+            } catch (e) {
+                document.getElementById('health-status').innerHTML = '<span class="text-rose-600">● 后端未启动</span> · 请在本机运行 <code class="px-1.5 py-0.5 bg-stone-100 rounded text-[10px]">python -m uvicorn app.main:app --port 8765</code>';
+            }
+        }
+
+        async function loadDocs() {
+            try {
+                const res = await fetch(`${API_BASE}/api/knowledge/documents?limit=10`);
+                const docs = await res.json();
+                const container = document.getElementById('doc-list');
+                if (docs.length === 0) {
+                    container.innerHTML = '<div class="px-6 py-8 text-center text-sm text-stone-500">后端已连接，知识库为空</div>';
+                    return;
+                }
+                container.innerHTML = docs.map(d => `
+                    <a href="pages/knowledge-base.html" class="block px-6 py-4 hover:bg-stone-50">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3 flex-1 min-w-0">
+                                <div class="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center"><i class="fa-solid ${d.source === 'obsidian' ? 'fa-feather' : 'fa-file-lines'} text-stone-500 text-sm"></i></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-stone-900 truncate">${d.name}</div>
+                                    <div class="flex items-center gap-2 mt-1 text-[11px] text-stone-500">
+                                        <span class="px-1.5 py-0.5 rounded ${d.source === 'seed' ? 'bg-blue-50 text-blue-700' : 'bg-stone-100 text-stone-700'}">${d.source === 'seed' ? '种子' : d.source === 'obsidian' ? 'Obsidian' : '上传'}</span>
+                                        <span>${d.chunks_count} 条法条</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 ${d.status === 'ready' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'} rounded">${d.status === 'ready' ? '已就绪' : '失败'}</span>
+                        </div>
+                    </a>
+                `).join('');
+            } catch (e) {
+                document.getElementById('doc-list').innerHTML = '<div class="px-6 py-8 text-center text-sm text-rose-500">需要后端服务</div>';
+            }
+        }
+
+        loadStats();
+        loadDocs();
+    </script>
+</body>
+</html>

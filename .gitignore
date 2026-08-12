@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+.cache
+
+# Node
+node_modules/
+.npm
+.eslintcache
+dist/
+build/
+*.log
+
+# 临时文件
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# 数据 & 模型 (体积大，不上传)
+storage/
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+qdrant_local/
+*.qdrant
+*.lock
+
+# 模型权重
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+models/
+checkpoints/
+pretrained_weights/
+
+# 临时日志
+*.log
+logs/
+*.out
+
+# 大文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 密钥 & 配置 (留 example)
+.env
+.env.local
+*.pem
+*.key
+secrets.yaml
+
+# Playwright
+.playwright/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# 但保留重要文件
+!backend/app/services/agents.py
+!backend/app/services/contract_review.py
