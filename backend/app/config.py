@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 72
 
+    # aipath 用户库路径（用于共享用户认证）
+    aipath_db_path: Optional[str] = None  # 默认 /opt/aipath-backend/backend/data/career.db
+
     # CORS
     cors_origins: list[str] = ["*"]
 
