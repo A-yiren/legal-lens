@@ -66,9 +66,15 @@
                         <input type="text" placeholder="搜索案件..." class="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
                     </div>
                 </div>
-                <a href="case-analysis.html" class="ml-2 inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600">
-                    <i class="fa-solid fa-plus text-xs"></i>新建案件
+                <a href="case-analysis.html" class="ml-2 inline-flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-200" title="去 AI 分析页创建带分析的案件">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>AI 分析创建
                 </a>
+                <button id="new-empty-case-btn" class="ml-2 inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600">
+                    <i class="fa-solid fa-plus text-xs"></i>新建空案件
+                </button>
+                <button id="refresh-btn" class="ml-1 inline-flex items-center gap-1 px-3 py-2 bg-white border border-stone-200 text-stone-700 text-sm rounded-lg hover:bg-stone-50" title="刷新列表">
+                    <i class="fa-solid fa-rotate text-xs"></i>
+                </button>
             </header>
 
             <div class="flex-1 overflow-y-auto scrollbar-thin">
@@ -166,6 +172,38 @@
             if (!s) return '';
             return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         }
+
+        // 创建空案件
+        document.getElementById('new-empty-case-btn').addEventListener('click', async () => {
+            const title = prompt('请输入新案件名称（不填则自动生成）', '');
+            if (title === null) return; // 用户取消
+            const finalTitle = title.trim() || `新案件 · ${new Date().toLocaleString('zh-CN', { hour12: false })}`;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/cases`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(localStorage.getItem('legallens_token') ? { 'Authorization': `Bearer ${localStorage.getItem('legallens_token')}` } : {}),
+                    },
+                    body: JSON.stringify({
+                        title: finalTitle,
+                        status: 'draft',
+                    }),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+                const saved = await res.json();
+                alert(`✅ 案件已创建：${saved.title}\n（案号：${saved.case_no}）`);
+                loadCases();
+            } catch (e) {
+                alert('创建失败：' + e.message);
+            }
+        });
+
+        // 刷新
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            loadCases();
+        });
 
         loadCases();
     </script>

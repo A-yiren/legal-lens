@@ -278,6 +278,10 @@
                 currentResult = result;
                 clearInterval(textInterval);
                 renderResult(result);
+                // 分析成功后自动保存到案件库
+                saveToCaseLibrary(caseDesc, result).catch(err => {
+                    console.warn('保存到案件库失败', err);
+                });
             } catch (e) {
                 clearInterval(textInterval);
                 document.getElementById('loading-state').classList.add('hidden');
@@ -293,6 +297,85 @@
                 document.getElementById('analyze-btn').disabled = false;
                 document.getElementById('analyze-btn').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>开始 AI 分析';
                 document.getElementById('status-badge').classList.add('hidden');
+            }
+        }
+
+        /**
+         * 自动保存分析结果到案件库
+         * - 用户在 case-analysis 分析完一个案情后，案件自动入案件库
+         * - 状态 = done（分析完成）
+         * - description = 案情描述
+         * - metadata = 分析结果（关键摘要）
+         */
+        async function saveToCaseLibrary(caseDesc, result) {
+            // 生成案件名：取案情前 30 字 + 时间戳
+            const summary = (result.summary || result.focus || caseDesc).slice(0, 30).replace(/\s+/g, ' ').trim();
+            const ts = new Date().toLocaleString('zh-CN', { hour12: false });
+            const title = `${summary || '案件分析'} · ${ts}`;
+
+            // 案件类型：尝试从 result.case_type 或 result.cause 推断
+            const caseType = (result.case_type || result.cause || 'legal_analysis').toString().slice(0, 50);
+
+            // 客户名（如有）
+            const client = (result.parties && (result.parties.原告 || result.parties.party_a || '')) || '';
+
+            // 涉案金额（如有）
+            const amount = (() => {
+                const m = (caseDesc + JSON.stringify(result)).match(/(\d+(?:\.\d+)?)\s*[元万]/);
+                if (!m) return null;
+                let v = parseFloat(m[1]);
+                if (caseDesc.includes('万')) v = v * 10000;
+                return v;
+            })();
+
+            // 提取关键信息到 metadata
+            const meta = {
+                analysis_id: result.analysis_id || null,
+                case_id: result.case_id || null,
+                confidence: result.confidence || null,
+                focus: result.focus || null,
+                citation_count: (result.citations || []).length,
+                agent_pipeline: result.agent_pipeline || null,
+                agents_used: result.agents_used || [],
+                source: 'case-analysis',
+                saved_at: new Date().toISOString(),
+            };
+
+            const token = localStorage.getItem('legallens_token') || localStorage.getItem('token') || '';
+
+            const res = await fetch(`${API_BASE}/api/cases`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    title,
+                    client,
+                    case_type: caseType,
+                    description: caseDesc,
+                    amount,
+                    status: 'done',
+                    metadata: meta,
+                }),
+            });
+
+            if (!res.ok) {
+                console.warn('保存案件库失败', res.status, await res.text());
+                return;
+            }
+            const saved = await res.json();
+            console.log('已自动保存到案件库:', saved.id, saved.title);
+
+            // 在右栏顶部显示"已保存"提示
+            const statusBadge = document.getElementById('status-badge');
+            if (statusBadge) {
+                statusBadge.classList.remove('hidden');
+                statusBadge.innerHTML = `<i class="fa-solid fa-check mr-1"></i>已存入案件库`;
+                statusBadge.className = 'px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full';
+                setTimeout(() => {
+                    statusBadge.classList.add('hidden');
+                }, 3000);
             }
         }
 
