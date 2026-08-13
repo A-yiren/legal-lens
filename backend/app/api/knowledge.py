@@ -183,6 +183,39 @@ async def get_document(
         except Exception as e:
             log.exception(f"读取预览失败: {e}")
             result["preview"] = {"text": f"(读取失败: {e})", "total_chars": 0, "is_truncated": False, "truncated_at": 0}
+    elif preview and doc_id.startswith("case-"):
+        # 案件类（.case 文件）: 没有 file_path，从 Qdrant legal_cases 集合读 chunks
+        try:
+            from qdrant_client.models import Filter, FieldCondition, MatchValue
+            from app.storage.qdrant_client import vector_store
+            points, _ = vector_store.client.scroll(
+                collection_name="legal_cases",
+                scroll_filter=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]),
+                limit=20,
+                with_payload=True,
+                with_vectors=False,
+            )
+            # 按 chunk_index 排序
+            points.sort(key=lambda p: p.payload.get("chunk_index", 0))
+            # 拼接 facts / reasoning / judgment 三段
+            parts = []
+            for p in points:
+                chunk_type = p.payload.get("chunk_type", "")
+                text = p.payload.get("text", "").strip()
+                if text:
+                    label = {"facts": "【事实】", "reasoning": "【理由】", "judgment": "【判决】"}.get(chunk_type, f"【{chunk_type}】")
+                    parts.append(f"{label}\n{text}")
+            text = "\n\n".join(parts) if parts else "(案件暂无内容)"
+            truncated = text[:preview_chars]
+            result["preview"] = {
+                "text": truncated,
+                "total_chars": len(text),
+                "is_truncated": len(text) > preview_chars,
+                "truncated_at": min(preview_chars, len(text)),
+            }
+        except Exception as e:
+            log.exception(f"读取案件预览失败: {e}")
+            result["preview"] = {"text": f"(读取失败: {e})", "total_chars": 0, "is_truncated": False, "truncated_at": 0}
 
     return result
 
