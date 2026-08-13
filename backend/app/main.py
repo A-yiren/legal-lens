@@ -10,7 +10,7 @@ from pathlib import Path
 from app.config import settings
 from app.utils.logging import log
 from app.storage.qdrant_client import vector_store
-from app.api import health, knowledge, analyze, cases, obsidian
+from app.api import health, knowledge, analyze, cases, obsidian, auth
 
 
 @asynccontextmanager
@@ -58,6 +58,7 @@ app.include_router(knowledge.router)
 app.include_router(analyze.router)
 app.include_router(cases.router)
 app.include_router(obsidian.router)
+app.include_router(auth.router)
 
 
 # 静态前端（如果存在）

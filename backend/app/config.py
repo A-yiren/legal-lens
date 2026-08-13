@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     obsidian_watch_enabled: bool = True
     obsidian_sync_interval: int = 60  # 秒
 
+    # JWT（与 aipath 一致：HS256 / 72h / secret 共享）
+    jwt_secret: str = "change-me"  # 部署时请改成强 key
+    jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = 72
+
     # CORS
     cors_origins: list[str] = ["*"]
 
