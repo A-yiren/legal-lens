@@ -1,0 +1,30 @@
+flowchart TB
+    subgraph S1 ["🏦 场景 1 · 银行信贷审批"]
+        C1["客户经理输入:<br/>'某企业申请 500 万流贷<br/>担保为关联公司股权'"]
+        R1["A2 匹配:<br/>商业银行法 / 担保法<br/>征信业管理条例"]
+        O1["输出:<br/>担保有效性 / 关联风险<br/>需补尽的合规动作"]
+    end
+
+    subgraph S2 ["🛡️ 场景 2 · 保险理赔审查"]
+        C2["理赔员输入:<br/>'投保人重疾出险<br/>保险公司以未如实告知拒赔'"]
+        R2["A2 匹配:<br/>保险法 / 民法典合同编<br/>司法解释二"]
+        O2["输出:<br/>如实告知义务边界<br/>不可抗辩条款适用"]
+    end
+
+    subgraph S3 ["💰 场景 3 · 理财适当性"]
+        C3["理财经理输入:<br/>'客户 60 岁 R5 风险<br/>被推荐高风险私募产品亏损'"]
+        R3["A2 匹配:<br/>商业银行理财业务监督管理办法<br/>九民纪要 / 证券投资基金法"]
+        O3["输出:<br/>适当性义务违反<br/>金融机构举证责任倒置"]
+    end
+
+    S1 --> S2 --> S3
+
+    style C1 fill:#fef3c7,stroke:#d97706
+    style C2 fill:#fef3c7,stroke:#d97706
+    style C3 fill:#fef3c7,stroke:#d97706
+    style R1 fill:#dbeafe,stroke:#1e40af
+    style R2 fill:#dbeafe,stroke:#1e40af
+    style R3 fill:#dbeafe,stroke:#1e40af
+    style O1 fill:#dcfce7,stroke:#0c4a3e
+    style O2 fill:#dcfce7,stroke:#0c4a3e
+    style O3 fill:#dcfce7,stroke:#0c4a3e

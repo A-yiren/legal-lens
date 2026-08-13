@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     )
 
     # 基础
-    app_name: str = "律瞳 LegalLens"
-    app_version: str = "0.1.0"
+    app_name: str = "金睛 RiskLens"
+    app_version: str = "0.2.0"
     debug: bool = False
     log_level: str = "INFO"
 

@@ -79,6 +79,8 @@ class RetrievalService:
         law_name = hit.get("law_name", "")
         article_no = hit.get("article_no", "")
         citation = f"{law_name} {article_no}".strip()
+        # 知识库分类: 默认 "law"，从 payload 中读 category 字段
+        category = hit.get("category", "law")
 
         return SearchResult(
             chunk_id=hit["chunk_id"],
@@ -88,6 +90,7 @@ class RetrievalService:
             law_name=law_name,
             article_no=article_no,
             citation=citation,
+            category=category,
         )
 
 

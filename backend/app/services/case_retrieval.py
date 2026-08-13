@@ -100,6 +100,7 @@ class CaseRetrievalService:
                 score=hit.get("score", 0.0),
                 cited_articles=hit.get("cited_articles", []),
                 similarity_to_query=hit.get("score", 0.0),
+                category=hit.get("category", "case"),
             ))
 
         return results

@@ -1,0 +1,13 @@
+flowchart TB
+    E1["1️⃣ 任务输入<br/>用户粘贴案情 / 上传合同"]:::step
+    E2["2️⃣ 任务拆解<br/>A1 提取案由 / 金额 / 当事人 / 争议焦点"]:::step
+    E3["3️⃣ 上下文传递<br/>A1→A2→A3→A4 关键事实压缩"]:::step
+    E4["4️⃣ 工具调用<br/>A2/A3 调 RAG · A4 调 LLM · 合同走规则引擎"]:::step
+    E5["5️⃣ 结果验证<br/>A3 逐条核验 [n] 引用真实性"]:::step
+    E6["6️⃣ 证据沉淀<br/>结果入 SQLite · 入参到案件库"]:::step
+    E7["7️⃣ 审批与回滚<br/>案件库 PUT/DELETE 端点生效"]:::step
+    E8["8️⃣ 经验沉淀<br/>模板复用 · 历史分析复盘"]:::step
+
+    E1 ==> E2 ==> E3 ==> E4 ==> E5 ==> E6 ==> E7 ==> E8
+
+    classDef step fill:#dcfce7,stroke:#0c4a3e,stroke-width:2px,color:#0c4a3e

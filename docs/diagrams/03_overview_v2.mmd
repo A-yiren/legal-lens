@@ -1,0 +1,53 @@
+flowchart TB
+    subgraph L1 ["👤 用户层 / User Layer"]
+        U1["银行客户经理 / 信贷审批员"]
+        U2["保险理赔员 / 合规官"]
+        U3["理财经理 / 风控分析师"]
+    end
+
+    subgraph L2 ["🖥️ 前端层 / Frontend (HTML + Tailwind)"]
+        F1["工作台 · Dashboard"]
+        F2["AI 分析 · 4 Agent 协同"]
+        F3["类案检索 · 60 判例"]
+        F4["知识库 · 41 法规"]
+        F5["案件库 · CRUD"]
+    end
+
+    subgraph L3 ["⚙️ 后端层 / Backend (FastAPI 0.115)"]
+        B1["4 Agent 引擎 (A1/A2/A3/A4)"]
+        B2["双 RAG 检索服务"]
+        B3["合同审查规则引擎"]
+        B4["JWT 认证 (aipath 共享)"]
+    end
+
+    subgraph L4 ["🤖 AI 层 / AI Layer"]
+        A1["A1 焦点识别"]
+        A2["A2 法律分析"]
+        A3["A3 引用核验 ⭐"]
+        A4["A4 风险评估"]
+        LLM["LLM: MiniMax-Text-01"]
+        EMB["Embedding: bge-small-zh-v1.5"]
+    end
+
+    subgraph L5 ["💾 数据层 / Data Layer"]
+        D1["法律库 41 部 · 1840 chunks"]
+        D2["案例库 60 判例 · 180 chunks"]
+        D3["Qdrant (local)"]
+        D4["SQLite 案件库"]
+    end
+
+    U1 & U2 & U3 --> F1 & F2 & F3 & F4 & F5
+    F1 & F2 & F3 & F4 & F5 --> B1 & B2 & B3 & B4
+    B1 --> A1 & A2 & A3 & A4
+    A1 & A2 & A3 & A4 --> LLM
+    B2 --> EMB --> D3
+    D1 & D2 --> D3
+    B1 & B2 & B3 --> D3
+    B4 --> D4
+
+    style A3 fill:#fbbf24,stroke:#d97706,stroke-width:3px
+    style B1 fill:#dcfce7,stroke:#0c4a3e,stroke-width:2px
+    style D3 fill:#dbeafe,stroke:#1e40af,stroke-width:2px
+    style U1 fill:#fef3c7,stroke:#d97706
+    style U2 fill:#fef3c7,stroke:#d97706
+    style U3 fill:#fef3c7,stroke:#d97706

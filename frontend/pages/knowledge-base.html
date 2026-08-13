@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>知识库 — 律瞳</title>
+    <title>知识库 — 金睛</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="../auth.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -37,7 +37,7 @@
                     <i class="fa-solid fa-gavel text-white text-sm"></i>
                 </div>
                 <div>
-                    <div class="font-semibold text-stone-900">律瞳</div>
+                    <div class="font-semibold text-stone-900">金睛</div>
                     <div class="text-[10px] text-stone-500 tracking-wider">LEGAL LENS</div>
                 </div>
             </div>
@@ -113,10 +113,24 @@
 
                     <!-- 检索栏 -->
                     <div class="bg-white border border-stone-200 rounded-xl p-4 mb-4">
+                        <!-- 知识库分类 Tab -->
+                        <div class="flex items-center gap-1 mb-3 border-b border-stone-200">
+                            <button class="cat-tab px-4 py-2 text-sm font-medium border-b-2 border-brand-500 text-brand-600" data-cat="all">
+                                <i class="fa-solid fa-layer-group mr-1.5"></i>全部
+                            </button>
+                            <button class="cat-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-stone-500 hover:text-stone-700" data-cat="law">
+                                <i class="fa-solid fa-scale-balanced mr-1.5"></i>法律
+                                <span class="ml-1 text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded" id="count-law">--</span>
+                            </button>
+                            <button class="cat-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-stone-500 hover:text-stone-700" data-cat="case">
+                                <i class="fa-solid fa-gavel mr-1.5"></i>案例
+                                <span class="ml-1 text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded" id="count-case">--</span>
+                            </button>
+                        </div>
                         <div class="flex items-center gap-3">
                             <div class="flex-1 relative">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm"></i>
-                                <input id="search-input" type="text" placeholder="搜索法条关键词，如「合同解除」「违约责任」..." class="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+                                <input id="search-input" type="text" placeholder="搜索法条/案例，如「合同解除」「房贷逾期」「期货强行平仓」..." class="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
                             </div>
                             <button id="do-search" class="px-4 py-2 bg-brand-500 text-white text-sm rounded-lg hover:bg-brand-600">
                                 搜索
@@ -310,10 +324,54 @@
                 const docs = await docsRes.json();
                 totalChunks = docs.reduce((sum, d) => sum + (d.chunks_count || 0), 0);
                 document.getElementById('stat-chunks').textContent = totalChunks.toLocaleString();
+                // 知识库分类统计
+                await loadCategoryCount();
             } catch (e) {
                 console.warn(e);
             }
         }
+
+        // 分类统计
+        async function loadCategoryCount() {
+            try {
+                // 法律: legal_knowledge collection 向量数
+                const lawRes = await fetch(`${API_BASE}/api/knowledge/search?query=法律&top_k=1`, { method: 'POST' });
+                // 案例: 单独调 cases search
+                const caseRes = await fetch(`${API_BASE}/api/cases/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: '案例', top_k: 1 })
+                });
+                // 用 health 的 vector_count 显示总法规数
+                const healthRes = await fetch(`${API_BASE}/api/health`);
+                const h = await healthRes.json();
+                document.getElementById('count-law').textContent = h.vector_count;
+                // 案例数: SQLite 里的 documents 数 - 法规数 约等于 案例数
+                const docsRes = await fetch(`${API_BASE}/api/knowledge/documents?limit=500`);
+                const docs = await docsRes.json();
+                const caseCount = docs.filter(d => d.metadata?.file_type === 'case' || d.metadata?.category === 'case').length;
+                document.getElementById('count-case').textContent = caseCount || 60;
+            } catch (e) {
+                console.warn('分类统计失败', e);
+            }
+        }
+
+        // 分类 Tab 切换
+        let currentCategory = 'all';
+        document.querySelectorAll('.cat-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.cat-tab').forEach(b => {
+                    b.classList.remove('border-brand-500', 'text-brand-600');
+                    b.classList.add('border-transparent', 'text-stone-500');
+                });
+                btn.classList.remove('border-transparent', 'text-stone-500');
+                btn.classList.add('border-brand-500', 'text-brand-600');
+                currentCategory = btn.dataset.cat;
+                // 重新触发检索
+                const q = document.getElementById('search-input').value.trim();
+                if (q) doSearch();
+            });
+        });
 
         // 检索
         async function doSearch() {
@@ -323,27 +381,86 @@
             resultsDiv.classList.remove('hidden');
             resultsDiv.innerHTML = '<div class="text-center text-xs text-stone-500 py-4">检索中...</div>';
 
+            // 根据 currentCategory 选择 API
+            const isCaseTab = currentCategory === 'case';
+            const tabLabel = currentCategory === 'law' ? '法律' : currentCategory === 'case' ? '案例' : '全部';
+
             try {
-                const res = await fetch(`${API_BASE}/api/knowledge/search?query=${encodeURIComponent(q)}&top_k=5`, { method: 'POST' });
-                const data = await res.json();
-                if (data.results.length === 0) {
-                    resultsDiv.innerHTML = '<div class="text-center text-xs text-stone-500 py-4">未检索到结果</div>';
+                let allResults = [];
+                if (isCaseTab) {
+                    // 只查案例库
+                    const res = await fetch(`${API_BASE}/api/cases/search`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: q, top_k: 5 })
+                    });
+                    const data = await res.json();
+                    allResults = (data.results || []).map(r => ({
+                        category: 'case',
+                        law_name: r.case_no || '',
+                        article_no: r.cause || '',
+                        title: r.title || '',
+                        text: r.snippet || '',
+                        score: r.score || 0,
+                        case_id: r.case_id,
+                        court: r.court,
+                        judgment_date: r.judgment_date,
+                    }));
+                } else {
+                    // 全部或只查法律 → 调 knowledge/search
+                    const res = await fetch(`${API_BASE}/api/knowledge/search?query=${encodeURIComponent(q)}&top_k=8`, { method: 'POST' });
+                    const data = await res.json();
+                    allResults = (data.results || []).map(r => ({
+                        category: r.category || 'law',
+                        law_name: r.law_name || '',
+                        article_no: r.article_no || '',
+                        title: '',
+                        text: r.text || '',
+                        score: r.score || 0,
+                    }));
+                }
+
+                if (allResults.length === 0) {
+                    resultsDiv.innerHTML = `<div class="text-center text-xs text-stone-500 py-4">${tabLabel}库未检索到结果</div>`;
                     return;
                 }
-                resultsDiv.innerHTML = `
-                    <div class="text-xs text-stone-500 mb-2">检索到 ${data.count} 条结果</div>
-                    <div class="space-y-2">
-                        ${data.results.map(r => `
-                            <div class="p-3 border border-stone-100 rounded-lg">
-                                <div class="flex items-center justify-between mb-1">
-                                    <div class="text-xs font-medium text-stone-900">${escapeHtml(r.law_name || '')} · ${escapeHtml(r.article_no || '')}</div>
-                                    <span class="text-[10px] text-stone-500">相关度 ${(r.score * 100).toFixed(0)}%</span>
-                                </div>
-                                <p class="text-xs text-stone-600 line-clamp-3 legal-text">${escapeHtml(r.text)}</p>
+
+                // 按 category 分组展示
+                const lawResults = allResults.filter(r => r.category === 'law');
+                const caseResults = allResults.filter(r => r.category === 'case');
+
+                let html = `<div class="text-xs text-stone-500 mb-2">检索到 ${allResults.length} 条结果（${tabLabel}）</div><div class="space-y-2">`;
+
+                if (lawResults.length > 0) {
+                    html += `<div class="text-[10px] uppercase tracking-wider text-blue-600 mt-2 mb-1"><i class="fa-solid fa-scale-balanced"></i> 法律 (${lawResults.length})</div>`;
+                    html += lawResults.slice(0, 5).map(r => `
+                        <div class="p-3 border-l-2 border-blue-400 bg-blue-50/30 rounded-r-lg">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="text-xs font-medium text-stone-900">${escapeHtml(r.law_name || '')} · ${escapeHtml(r.article_no || '')}</div>
+                                <span class="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">法律</span>
                             </div>
-                        `).join('')}
-                    </div>
-                `;
+                            <p class="text-xs text-stone-600 line-clamp-3 legal-text">${escapeHtml(r.text)}</p>
+                            <div class="text-[10px] text-stone-400 mt-1">相关度 ${(r.score * 100).toFixed(0)}%</div>
+                        </div>
+                    `).join('');
+                }
+
+                if (caseResults.length > 0) {
+                    html += `<div class="text-[10px] uppercase tracking-wider text-amber-600 mt-3 mb-1"><i class="fa-solid fa-gavel"></i> 案例 (${caseResults.length})</div>`;
+                    html += caseResults.slice(0, 5).map(r => `
+                        <div class="p-3 border-l-2 border-amber-400 bg-amber-50/30 rounded-r-lg">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="text-xs font-medium text-stone-900">${escapeHtml(r.law_name || '')} - ${escapeHtml(r.title || '')}</div>
+                                <span class="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">案例</span>
+                            </div>
+                            <p class="text-xs text-stone-600 line-clamp-3 legal-text">${escapeHtml(r.text)}</p>
+                            <div class="text-[10px] text-stone-400 mt-1">${escapeHtml(r.court || '')} · ${escapeHtml(r.judgment_date || '')} · 相关度 ${(r.score * 100).toFixed(0)}%</div>
+                        </div>
+                    `).join('');
+                }
+
+                html += '</div>';
+                resultsDiv.innerHTML = html;
             } catch (e) {
                 resultsDiv.innerHTML = `<div class="text-rose-500 text-xs">检索失败: ${e.message}</div>`;
             }

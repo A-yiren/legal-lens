@@ -1,0 +1,41 @@
+flowchart LR
+    In["📥 案情输入<br/>银行/保险/理财场景"]:::input
+
+    subgraph S1 ["🔍 Step 1 · RAG 检索 (双 collection)"]
+        R1["法规库 41 部 · 1840 chunks<br/>category=law"]
+        R2["案例库 60 判例 · 180 chunks<br/>category=case"]
+    end
+
+    subgraph S2 ["⚡ Step 2 · 并行执行"]
+        A1["🤖 A1 焦点识别 Agent<br/>识别案由 / 金额 / 争议焦点"]:::parallel
+        A4["🤖 A4 风险评估 Agent<br/>扫描潜在法律风险"]:::parallel
+    end
+
+    subgraph S3 ["📝 Step 3 · 串行分析"]
+        A2["🤖 A2 法律分析 Agent<br/>基于焦点 + 检索法条<br/>输出带 [n] 引用的分析"]:::serial
+    end
+
+    subgraph S4 ["🛡️ Step 4 · 引用核验 ⭐"]
+        A3["🤖 A3 引用校验 Agent<br/>逐字核对 [n] 引用<br/>标「通过」/「幻觉」"]:::validator
+    end
+
+    subgraph S5 ["📦 Step 5 · 整合输出"]
+        Int["过滤幻觉引用<br/>去重 + 补元数据<br/>重算 confidence"]:::output
+    end
+
+    Out["📤 5 字段结构化报告<br/>case_focus / legal_analysis<br/>risks / next_steps / citations"]:::output
+
+    In ==> S1
+    S1 ==> A1
+    S1 ==> A4
+    A1 ==> A2
+    A4 ==> A2
+    A2 ==> A3
+    A3 ==> Int
+    Int ==> Out
+
+    classDef input fill:#f5f5f4,stroke:#0c4a3e,stroke-width:2px,color:#1c1917
+    classDef parallel fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#1c1917
+    classDef serial fill:#dcfce7,stroke:#0c4a3e,stroke-width:3px,color:#0c4a3e
+    classDef validator fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000
+    classDef output fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a

@@ -270,6 +270,7 @@ async def search_knowledge(
                 "law_name": r.law_name,
                 "article_no": r.article_no,
                 "citation": r.citation,
+                "category": r.category,  # 知识库分类: law (法规) / case (案例)
                 "metadata": r.metadata,
             }
             for r in results
