@@ -1,48 +1,31 @@
-flowchart LR
-    Input["📥 Case Input"] --> Retrieve
+flowchart TB
+    Step1["<b>🔍 Step 1 · RAG Retrieval</b><br/><br/>Embedding + Qdrant hybrid search top-20<br/>↓<br/>RRF Fusion + Rerank → Feed to LLM"]
 
-    subgraph RAG ["🔍 Step 1: RAG Retrieval"]
-        Retrieve["Embedding + Qdrant<br/>Hybrid search top-20"]
-        Rerank["RRF Fusion + Rerank<br/>Feed to LLM"]
-    end
+    Step2["<b>⚡ Step 2 · Parallel Execution</b><br/><br/>🤖 A1 Focus ID Agent — Identify legal relations / disputes<br/>🤖 A4 Risk Assessment Agent — Scan potential legal risks"]
 
-    Retrieve --> Rerank
+    Step3["<b>📝 Step 3 · Sequential Analysis</b><br/><br/>🤖 A2 Legal Analysis Agent<br/>Based on A1 focus + retrieved laws<br/>Output analysis with [n] citations"]
 
-    Rerank --> Parallel
+    Step4["<b>🛡️ Step 4 · Citation Validation ⭐</b><br/><br/>🤖 A3 Citation Validation Agent<br/>Verify each [n] citation is genuinely in retrieved docs<br/>Tag 'hallucination' / 'verified'"]
 
-    subgraph Parallel ["⚡ Step 2: Parallel Execution"]
-        direction TB
-        A1["🤖 A1 Focus ID Agent<br/>Identify legal relations / disputes"]
-        A4["🤖 A4 Risk Assessment Agent<br/>Scan potential legal risks"]
-    end
+    Step5["<b>📦 Step 5 · Integration & Output</b><br/><br/>① Filter A3-tagged hallucination citations<br/>② Deduplicate by law + article<br/>③ Enrich metadata (official source / publisher / status)<br/>④ Renumber [1] [2] [3]<br/>⑤ Recompute confidence score"]
 
-    Parallel --> A2
+    Input["📥 Case Input"]:::inputStyle
+    Output["📤 Final Output<br/>Each point linked to official source<br/>One-click jump to official law database"]:::outputStyle
 
-    A2["🤖 A2 Legal Analysis Agent<br/>Based on A1 focus + retrieved laws<br/>Output analysis with [n] citations"] --> A3
+    Input ==> Step1
+    Step1 ==> Step2
+    Step2 ==> Step3
+    Step3 ==> Step4
+    Step4 ==> Step5
+    Step5 ==> Output
 
-    style A2 fill:#dcfce7,stroke:#0c4a3e,stroke-width:2px
-
-    A3["🤖 A3 Citation Validation Agent ⭐<br/>Verify each [n] citation<br/>is genuinely in the retrieved docs<br/>Tag 'hallucination' / 'verified'"]
-
-    style A3 fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000
-
-    A3 --> Integrate
-
-    subgraph Integrate ["📦 Step 5: Integration & Output"]
-        direction TB
-        I1["Filter A3-tagged hallucination citations"]
-        I2["Deduplicate by law+article"]
-        I3["Enrich metadata<br/>(official source / publisher / status)"]
-        I4["Renumber [1] [2] [3]"]
-        I5["Recompute confidence score"]
-    end
-
-    Integrate --> Output
-
-    Output["📤 Final Output<br/>Each point linked to official source<br/>One-click jump to official law database"]
-
+    style Step1 fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#1c1917
+    style Step2 fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#1c1917
+    style Step3 fill:#dcfce7,stroke:#0c4a3e,stroke-width:3px,color:#0c4a3e
+    style Step4 fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000
+    style Step5 fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a
+    style Input fill:#f5f5f4,stroke:#0c4a3e,stroke-width:2px,color:#1c1917
     style Output fill:#0c4a3e,stroke:#083029,stroke-width:3px,color:#fff
 
-    style RAG fill:#fef3c7,stroke:#d97706
-    style Parallel fill:#fef3c7,stroke:#d97706
-    style Integrate fill:#dbeafe,stroke:#1e40af
+    classDef inputStyle font-size:18px
+    classDef outputStyle font-size:18px
