@@ -1,10 +1,12 @@
 """类案 + 合同审查 API"""
+import json
 from typing import Optional, List
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel
 
 from app.services.case_retrieval import case_retrieval
 from app.services.contract_review import contract_reviewer
+from app.storage.sqlite import db
 from app.utils.logging import log
 
 router = APIRouter(prefix="/api", tags=["cases"])
@@ -21,6 +23,33 @@ class ContractReviewRequest(BaseModel):
     contract_text: str
     contract_type: str = "general"  # general/labor/sale/lease/service
     user_role: str = "中立"  # 我方/对方/中立
+
+
+@router.get("/cases")
+async def list_cases(
+    status: Optional[str] = Query(None, description="按状态过滤: draft/processing/done/closed"),
+    search: Optional[str] = Query(None, description="按案件名称/案号/客户模糊搜索"),
+    limit: int = Query(200, ge=1, le=500),
+):
+    """列出所有用户案件（案件库页面用）"""
+    import sqlite3
+    conn = sqlite3.connect(db.db_path)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    sql = "SELECT id, case_no, title, client, case_type, amount, court, status, description, created_at, updated_at, metadata FROM cases WHERE 1=1"
+    params = []
+    if status:
+        sql += " AND status = ?"
+        params.append(status)
+    if search:
+        sql += " AND (title LIKE ? OR case_no LIKE ? OR client LIKE ?)"
+        kw = f"%{search}%"
+        params.extend([kw, kw, kw])
+    sql += " ORDER BY updated_at DESC LIMIT ?"
+    params.append(limit)
+    rows = c.execute(sql, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 @router.post("/cases/search")
