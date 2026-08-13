@@ -331,24 +331,92 @@ class ContractReviewService:
         return missing
 
     async def _retrieve_legal_basis(self, text: str, contract_type: str) -> List[Dict]:
-        """RAG 检索相关法条作为依据"""
-        # 截取合同前 500 字 + 合同类型作为 query
-        query = f"{contract_type} 合同 {text[:500]}"
+        """RAG 检索相关法条作为依据
+
+        优化策略:
+        1. 拉 20 条召回（top_k=20）保证多样性
+        2. 按 (law_name, article_no) 去重，同一法条只保留 score 最高的 chunk
+        3. 多 query 检索：合同类型 + 5 个常见法律关注点
+        4. 最终按 score 降序，取前 5
+        """
+        # 5 个法律关注点 query（按合同类型自适应）
+        focus_queries_map = {
+            "labor": [
+                "劳动合同期限 试用 期满",
+                "工作内容 工作时间 休息休假",
+                "工资待遇 加班费 社保 公积金",
+                "竞业限制 经济补偿 违约金",
+                "合同解除 终止条件 赔偿金",
+            ],
+            "sale": [
+                "买卖合同 标的物 质量 数量",
+                "价款 支付方式 交付时间",
+                "所有权转移 风险负担",
+                "违约责任 违约金 赔偿损失",
+                "合同解除 不可抗力 争议解决",
+            ],
+            "lease": [
+                "租赁物 用途 期限",
+                "租金 支付方式 押金",
+                "维修 装修 改善",
+                "转租 优先购买权",
+                "合同解除 违约责任",
+            ],
+            "service": [
+                "服务内容 方式 标准",
+                "费用 支付方式 发票",
+                "知识产权 保密",
+                "服务质量 验收",
+                "违约责任 解除",
+            ],
+            "general": [
+                "合同主体 标的 数量 质量",
+                "价款 支付方式",
+                "履行期限 地点 方式",
+                "违约责任 违约金 赔偿",
+                "争议解决 管辖 适用法律",
+            ],
+        }
+        queries = focus_queries_map.get(contract_type, focus_queries_map["general"])
+
+        # 每个 query 拉 6 条
+        per_query = 6
+        all_results = []  # (law_name, article_no, article_text, source_url, score)
+        seen = {}  # (law_name, article_no) -> (score, payload)
+
         try:
-            results = await self.retrieval.search(query, top_k=5)
-            return [
-                {
-                    "law_name": r.law_name,
-                    "article_no": r.article_no,
-                    "article_text": r.text[:200],
-                    "source_url": (r.metadata or {}).get("source_url", ""),
-                    "score": r.score,
-                }
-                for r in results
-            ]
+            for q in queries:
+                # 合同类型 + 关注点 + 合同摘要（避开具体日期金额）
+                snippet = text[:300] if len(text) > 300 else text
+                query = f"{contract_type}合同 {q} {snippet}"
+                results = await self.retrieval.search(query, top_k=per_query)
+                for r in results:
+                    key = (r.law_name, r.article_no)
+                    score = float(r.score or 0)
+                    if key in seen:
+                        # 同 key 保留 score 最高的
+                        if score > seen[key][0]:
+                            seen[key] = (score, r)
+                    else:
+                        seen[key] = (score, r)
+                all_results.extend(results)
         except Exception as e:
             log.warning(f"RAG 检索失败: {e}")
-            return []
+
+        # 去重后按 score 降序排序，取前 5
+        unique = list(seen.values())
+        unique.sort(key=lambda x: x[0], reverse=True)
+
+        return [
+            {
+                "law_name": r.law_name,
+                "article_no": r.article_no,
+                "article_text": r.text[:200],
+                "source_url": (r.metadata or {}).get("source_url", ""),
+                "score": score,
+            }
+            for score, r in unique[:5]
+        ]
 
     async def _llm_analyze(
         self,
