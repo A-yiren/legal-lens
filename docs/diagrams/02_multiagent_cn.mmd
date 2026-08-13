@@ -1,0 +1,48 @@
+flowchart LR
+    Input["📥 案情输入<br/>Case Input"] --> Retrieve
+
+    subgraph RAG ["🔍 步骤 1: RAG 检索"]
+        Retrieve["Embedding + Qdrant<br/>混合检索 top-20"]
+        Rerank["RRF 融合 + 重排<br/>送入 LLM"]
+    end
+
+    Retrieve --> Rerank
+
+    Rerank --> Parallel
+
+    subgraph Parallel ["⚡ 步骤 2: 并行执行 (Parallel)"]
+        direction TB
+        A1["🤖 A1 焦点识别 Agent<br/>识别法律关系 / 争议焦点"]
+        A4["🤖 A4 风险评估 Agent<br/>扫描潜在法律风险"]
+    end
+
+    Parallel --> A2
+
+    A2["🤖 A2 法律分析 Agent<br/>基于 A1 焦点 + 检索法条<br/>输出带 [n] 引用的分析"] --> A3
+
+    style A2 fill:#dcfce7,stroke:#0c4a3e,stroke-width:2px
+
+    A3["🤖 A3 引用核验 Agent ⭐<br/>逐字核对每条 [n] 引用<br/>是否真在召回文档中<br/>标'幻觉' / 标'通过'"]
+
+    style A3 fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000
+
+    A3 --> Integrate
+
+    subgraph Integrate ["📦 步骤 5: 整合输出"]
+        direction TB
+        I1["过滤 A3 标'幻觉'的引用"]
+        I2["引用去重 (法名+条款号)"]
+        I3["补全元数据<br/>(官方源 / 发布机关 / 状态)"]
+        I4["重新编号 [1] [2] [3]"]
+        I5["重算 confidence 分数"]
+    end
+
+    Integrate --> Output
+
+    Output["📤 最终输出<br/>每条观点带官方源链接<br/>可一键跳转到官方法律法规库"]
+
+    style Output fill:#0c4a3e,stroke:#083029,stroke-width:3px,color:#fff
+
+    style RAG fill:#fef3c7,stroke:#d97706
+    style Parallel fill:#fef3c7,stroke:#d97706
+    style Integrate fill:#dbeafe,stroke:#1e40af

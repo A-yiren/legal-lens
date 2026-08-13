@@ -1,0 +1,48 @@
+flowchart LR
+    Input["📥 Case Input"] --> Retrieve
+
+    subgraph RAG ["🔍 Step 1: RAG Retrieval"]
+        Retrieve["Embedding + Qdrant<br/>Hybrid search top-20"]
+        Rerank["RRF Fusion + Rerank<br/>Feed to LLM"]
+    end
+
+    Retrieve --> Rerank
+
+    Rerank --> Parallel
+
+    subgraph Parallel ["⚡ Step 2: Parallel Execution"]
+        direction TB
+        A1["🤖 A1 Focus ID Agent<br/>Identify legal relations / disputes"]
+        A4["🤖 A4 Risk Assessment Agent<br/>Scan potential legal risks"]
+    end
+
+    Parallel --> A2
+
+    A2["🤖 A2 Legal Analysis Agent<br/>Based on A1 focus + retrieved laws<br/>Output analysis with [n] citations"] --> A3
+
+    style A2 fill:#dcfce7,stroke:#0c4a3e,stroke-width:2px
+
+    A3["🤖 A3 Citation Validation Agent ⭐<br/>Verify each [n] citation<br/>is genuinely in the retrieved docs<br/>Tag 'hallucination' / 'verified'"]
+
+    style A3 fill:#fbbf24,stroke:#d97706,stroke-width:4px,color:#000
+
+    A3 --> Integrate
+
+    subgraph Integrate ["📦 Step 5: Integration & Output"]
+        direction TB
+        I1["Filter A3-tagged hallucination citations"]
+        I2["Deduplicate by law+article"]
+        I3["Enrich metadata<br/>(official source / publisher / status)"]
+        I4["Renumber [1] [2] [3]"]
+        I5["Recompute confidence score"]
+    end
+
+    Integrate --> Output
+
+    Output["📤 Final Output<br/>Each point linked to official source<br/>One-click jump to official law database"]
+
+    style Output fill:#0c4a3e,stroke:#083029,stroke-width:3px,color:#fff
+
+    style RAG fill:#fef3c7,stroke:#d97706
+    style Parallel fill:#fef3c7,stroke:#d97706
+    style Integrate fill:#dbeafe,stroke:#1e40af

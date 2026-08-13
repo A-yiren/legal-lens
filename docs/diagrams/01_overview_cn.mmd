@@ -1,0 +1,65 @@
+flowchart TB
+    subgraph 用户层 ["👤 用户层 User Layer"]
+        U1["律师<br/>Lawyer"]
+        U2["企业法务<br/>In-house Counsel"]
+        U3["法律科技<br/>Legal Tech"]
+    end
+
+    subgraph 前端层 ["🖥️ 前端 Frontend"]
+        F1["浏览器<br/>Browser"]
+        F2["登录/注册<br/>Auth"]
+        F3["案件分析<br/>Case Analysis"]
+        F4["类案检索<br/>Case Search"]
+        F5["合同审查<br/>Contract Review"]
+        F6["知识库<br/>Knowledge Base"]
+    end
+
+    subgraph 后端层 ["⚙️ 后端 Backend (FastAPI)"]
+        B1["路由层<br/>API Router"]
+        B2["4 Agent 协同引擎<br/>Multi-Agent Engine"]
+        B3["RAG 检索服务<br/>RAG Retrieval"]
+        B4["规则引擎<br/>Rule Engine"]
+        B5["用户认证<br/>Auth (JWT)"]
+    end
+
+    subgraph AI 层 ["🤖 AI Layer"]
+        A1["A1 焦点识别<br/>Focus Identification"]
+        A2["A2 法律分析<br/>Legal Analysis"]
+        A3["A3 引用核验 ⭐<br/>Citation Validation"]
+        A4["A4 风险评估<br/>Risk Assessment"]
+        LLM["大语言模型<br/>LLM (MiniMax-Text-01)"]
+        EMB["向量模型<br/>Embedding (bge-small-zh)"]
+    end
+
+    subgraph 数据层 ["💾 数据层 Data Layer"]
+        D1["26 部现行法律<br/>26 Current Laws"]
+        D2["30 个真实判例<br/>30 Real Judgments"]
+        D3["向量库 Qdrant<br/>Vector Store"]
+        D4["用户库 SQLite<br/>User Database"]
+    end
+
+    U1 & U2 & U3 --> F1
+    F1 --> F2
+    F1 --> F3 & F4 & F5 & F6
+    F2 --> B5
+    F3 --> B2
+    F4 --> B3
+    F5 --> B2 & B4
+    F6 --> B3
+
+    B2 --> A1 & A4
+    A1 & A4 --> A2
+    A2 --> A3
+    A3 --> B2
+
+    B2 --> LLM
+    A1 & A2 & A3 & A4 -.调用.-> LLM
+    B3 --> EMB
+    EMB --> D3
+    B3 --> D3
+    B3 --> D1 & D2
+    B5 --> D4
+
+    style A3 fill:#fbbf24,stroke:#d97706,stroke-width:3px
+    style B2 fill:#dcfce7,stroke:#0c4a3e,stroke-width:2px
+    style D3 fill:#dbeafe,stroke:#1e40af,stroke-width:2px
