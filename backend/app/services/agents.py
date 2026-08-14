@@ -1,10 +1,10 @@
 """多 Agent 校验 - 律瞳核心引擎
 
-4 个独立 Agent 协同工作，互相校验：
+3 个已启用 Agent 协同工作，A4 暂停：
 - A1 Focus Agent: 独立识别案件焦点
 - A2 Analysis Agent: 基于焦点 + 检索法条生成法律观点
 - A3 Validator Agent ⭐: 逐条核对引用真实性，标出幻觉引用
-- A4 Risk Agent: 独立评估风险点 + 下一步建议
+- A4 Risk Agent: 暂停，待接入逐条引用核验后再启用
 
 每个 Agent 都是独立 LLM 调用，互不串通。最后整合时，A3 的校验结果用来过滤 A2 的输出。
 """
@@ -149,6 +149,35 @@ def _safe_parse_json(text: str) -> Dict[str, Any]:
             return {}
 
 
+def _normalize_citation_id(value: Any) -> Optional[int]:
+    """引用编号只允许正整数；异常结构必须 fail-closed。"""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, str) and value.strip().isdigit():
+        number = int(value.strip())
+        return number if number > 0 else None
+    return None
+
+
+def _extract_explicit_focuses(text: str) -> List[str]:
+    """确定性提取用户明确列出的子问题，防止 A1 改写或遗漏。"""
+    if not text:
+        return []
+    marker = r"(?:[一二三四五六七八九十]+|\d+)[、.．]"
+    pattern = re.compile(
+        rf"(?:^|[：:；;\n])\s*{marker}\s*(.+?)(?=(?:[；;\n]\s*{marker})|$)",
+        re.DOTALL,
+    )
+    focuses = []
+    for match in pattern.finditer(text):
+        focus = re.sub(r"\s+", " ", match.group(1)).strip(" 。；;")
+        if focus and focus not in focuses:
+            focuses.append(focus)
+    return focuses
+
+
 def _dedup_citations(citations: List[Citation]) -> List[Citation]:
     """按 (law_name, article_no) 去重，相加的 chunk_id 用列表保留"""
     seen = {}
@@ -156,14 +185,17 @@ def _dedup_citations(citations: List[Citation]) -> List[Citation]:
         key = (c.law_name or "", c.article_no or "")
         if key not in seen:
             seen[key] = c.model_copy()
-            seen[key].source_chunk_id = [c.source_chunk_id] if c.source_chunk_id else []
+            chunk_ids = c.source_chunk_id if isinstance(c.source_chunk_id, list) else [c.source_chunk_id]
+            seen[key].source_chunk_id = [cid for cid in chunk_ids if isinstance(cid, str) and cid]
         else:
             # 合并 chunk_id
             existing_ids = seen[key].source_chunk_id
             if isinstance(existing_ids, str):
                 existing_ids = [existing_ids]
-            if c.source_chunk_id and c.source_chunk_id not in existing_ids:
-                existing_ids.append(c.source_chunk_id)
+            new_ids = c.source_chunk_id if isinstance(c.source_chunk_id, list) else [c.source_chunk_id]
+            for cid in new_ids:
+                if isinstance(cid, str) and cid and cid not in existing_ids:
+                    existing_ids.append(cid)
             seen[key].source_chunk_id = existing_ids
     return list(seen.values())
 
@@ -196,7 +228,7 @@ def _attach_doc_metadata(citations: List[Any], doc_lookup: Dict[str, Dict]) -> L
 
 # ===== Agent 执行器 =====
 class MultiAgentOrchestrator:
-    """4 Agent 编排：并行 + 串行校验"""
+    """A1/A2/A3 安全编排；A4 在引用校验完成前停用。"""
 
     def __init__(self):
         self.llm = llm_service
@@ -213,7 +245,7 @@ class MultiAgentOrchestrator:
 
         流程：
         Step 1: 检索法条（已有 retrieval 服务）
-        Step 2 (并行): A1 焦点识别 + A4 风险评估
+        Step 2: A1 焦点识别（A4 暂停，避免未经引用核验的建议进入输出）
         Step 3: A2 法律分析（依赖 Step 2 焦点）
         Step 4: A3 引用校验（依赖 Step 3 分析）
         Step 5: 整合 + 过滤幻觉引用 + 重新计算 confidence
@@ -229,28 +261,106 @@ class MultiAgentOrchestrator:
         )
         log.info(f"[检索] 召回 {len(search_results)} 条候选法条")
 
+        # 初始上下文只用于帮助 A1/A4。即使初始召回为空，仍让 A1 识别焦点，
+        # 后续每个焦点可独立检索并挽救一次宽泛查询的漏召回。
+        citations, context_block, doc_lookup = self._build_context_with_meta(search_results)
+
+        # ===== Step 2: A1 焦点识别 =====
+        # A4 未建立逐条引用与 A3 校验前禁止调用，避免产生无法核验的法律结论。
+        log.info("[A1] 焦点识别（A4 安全停用）")
+        a1_result = await self._run_a1(case_description, context_block)
+        a4_result = {"risks": [], "next_steps": []}
+        # 用户明确列出的子问题优先于模型归纳，防止 A1 把跨领域问题改写、合并或遗漏。
+        explicit_focuses = _extract_explicit_focuses(case_description)
+        merged_focuses = []
+        seen_focus_text = set()
+        for focus_text in explicit_focuses:
+            normalized = focus_text.strip()
+            if normalized and normalized not in seen_focus_text:
+                seen_focus_text.add(normalized)
+                merged_focuses.append({"focus": normalized, "why": "用户明确列出"})
+        # 没有显式分项时才采用 A1 的模型归纳；有显式分项时不允许模型扩写焦点。
+        if not explicit_focuses:
+            for focus in a1_result.get("case_focus", []):
+                focus_text = focus.get("focus", "") if isinstance(focus, dict) else str(focus)
+                normalized = focus_text.strip()
+                if normalized and normalized not in seen_focus_text:
+                    seen_focus_text.add(normalized)
+                    merged_focuses.append(focus if isinstance(focus, dict) else {"focus": normalized})
+        if merged_focuses:
+            a1_result["case_focus"] = merged_focuses
+        log.info(f"[A1 完成] {len(a1_result.get('case_focus', []))} 焦点")
+        log.info("[A4 停用] 未经引用核验的风险与建议不进入报告")
+
+        # ===== Step 2.5: 按焦点并行多查询召回 =====
+        case_focus = a1_result.get("case_focus", [])
+        focus_queries = []
+        for focus in case_focus:
+            focus_text = focus.get("focus", "") if isinstance(focus, dict) else str(focus)
+            if focus_text.strip():
+                focus_queries.append(f"{focus_text}\n案情背景：{case_description}")
+
+        per_focus_k = max(2, min(5, (top_k + max(len(focus_queries), 1) - 1) // max(len(focus_queries), 1)))
+        focus_batches = []
+        if focus_queries:
+            log.info(f"[多焦点检索] {len(focus_queries)} 个查询, 每焦点 top_k={per_focus_k}")
+            batch_results = await asyncio.gather(*[
+                self.retrieval.search(
+                    query=query,
+                    top_k=per_focus_k,
+                    filters=filters,
+                    use_rerank=True,
+                )
+                for query in focus_queries
+            ], return_exceptions=True)
+            for query, batch in zip(focus_queries, batch_results):
+                if isinstance(batch, Exception):
+                    log.warning(f"焦点检索失败: query='{query[:50]}', error={batch}")
+                    focus_batches.append([])
+                else:
+                    focus_batches.append(batch)
+
+        # 每个焦点先保留自己的候选，再由初始召回补足，避免一个主题占满全局 Top-K。
+        merged_results = []
+        seen_chunk_ids = set()
+        max_merged = min(20, max(top_k, len(focus_batches) * 2))
+        for rank in range(per_focus_k):
+            for batch in focus_batches:
+                if rank >= len(batch):
+                    continue
+                hit = batch[rank]
+                if hit.chunk_id in seen_chunk_ids:
+                    continue
+                seen_chunk_ids.add(hit.chunk_id)
+                merged_results.append(hit)
+        for hit in search_results:
+            if hit.chunk_id not in seen_chunk_ids:
+                seen_chunk_ids.add(hit.chunk_id)
+                merged_results.append(hit)
+        search_results = merged_results[:max_merged]
+
         if not search_results:
             return {
                 "analysis_id": f"ana-{uuid.uuid4().hex[:12]}",
-                "case_focus": [],
+                "case_focus": [f.get("focus", "") if isinstance(f, dict) else str(f) for f in case_focus],
                 "legal_analysis": [],
                 "risks": ["知识库中未检索到相关法律条文"],
                 "next_steps": ["1. 上传相关法律法规到知识库\n2. 完善案情描述"],
                 "citations": [],
                 "confidence": 0.0,
-                "agents_used": [],
+                "citation_pass_rate": 0.0,
+                "focus_coverage_rate": 0.0,
+                "agents_used": ["A1_focus"],
+                "retrieval_stats": {
+                    "initial_hit_count": 0,
+                    "focus_query_count": len(focus_queries),
+                    "covered_focus_count": 0,
+                    "merged_hit_count": 0,
+                },
             }
 
-        # 构造引用 + context
+        # A2/A3 使用多焦点召回后的完整上下文。
         citations, context_block, doc_lookup = self._build_context_with_meta(search_results)
-
-        # ===== Step 2 (并行): A1 焦点 + A4 风险 =====
-        log.info("[A1+A4 并行] 焦点识别 + 风险评估")
-        a1_task = self._run_a1(case_description, context_block)
-        a4_task = self._run_a4(case_description, context_block)
-        a1_result, a4_result = await asyncio.gather(a1_task, a4_task)
-        log.info(f"[A1 完成] {len(a1_result.get('case_focus', []))} 焦点")
-        log.info(f"[A4 完成] {len(a4_result.get('risks', []))} 风险, {len(a4_result.get('next_steps', []))} 建议")
 
         # ===== Step 3: A2 法律分析 =====
         log.info("[A2] 法律分析（依赖 A1 焦点）")
@@ -274,13 +384,23 @@ class MultiAgentOrchestrator:
         )
         final["analysis_id"] = f"ana-{uuid.uuid4().hex[:12]}"
         final["case_id"] = case_id
-        final["agents_used"] = ["A1_focus", "A2_analysis", "A3_validator", "A4_risk"]
+        final["agents_used"] = ["A1_focus", "A2_analysis", "A3_validator"]
         final["agent_pipeline"] = {
             "a1_focus_count": len(a1_result.get("case_focus", [])),
             "a2_raw_points": len(raw_points),
             "a3_validated_citations": sum(1 for v in validation if v.get("valid")),
             "a3_hallucinated_citations": sum(1 for v in validation if not v.get("valid")),
             "a4_risks_count": len(a4_result.get("risks", [])),
+            "a4_enabled": False,
+        }
+        final["retrieval_stats"] = {
+            "initial_hit_count": len([h for h in search_results if h.chunk_id not in {
+                item.chunk_id for batch in focus_batches for item in batch
+            }]),
+            "focus_query_count": len(focus_queries),
+            "covered_focus_count": sum(1 for batch in focus_batches if batch),
+            "focus_hit_counts": [len(batch) for batch in focus_batches],
+            "merged_hit_count": len(search_results),
         }
 
         # 补上 source_url 等元数据
@@ -359,15 +479,84 @@ class MultiAgentOrchestrator:
             max_tokens=2000,
         )
         result = _safe_parse_json(text)
-        if "validation" not in result:
-            # 校验 Agent 失败时默认全 valid
-            total_cites = sum(len(p.get("citations", [])) for p in raw_points)
-            result = {
-                "validation": [{"point_index": i, "citation_id": c, "valid": True, "reason": "校验 Agent 输出失败，跳过校验"}
-                               for i, p in enumerate(raw_points, 1) for c in p.get("citations", [])],
-                "summary": {"total_citations": total_cites, "valid_citations": total_cites, "hallucinated_citations": 0},
-            }
-        return result
+        # 安全边界必须 fail-closed：只有 A3 明确返回 valid=true、且编号确实存在
+        # 于本次检索上下文中的引用才允许进入最终答案。
+        context_ids = {int(n) for n in re.findall(r"【(\d+)】", context)}
+        validator_failed = not isinstance(result.get("validation"), list)
+        returned = {}
+        if not validator_failed:
+            for item in result["validation"]:
+                if not isinstance(item, dict):
+                    continue
+                point_index = _normalize_citation_id(item.get("point_index"))
+                citation_id = _normalize_citation_id(item.get("citation_id"))
+                if point_index is None or citation_id is None:
+                    continue
+                key = (point_index, citation_id)
+                # 重复校验结果中只要有一次失败，就不能放行。
+                if key in returned and returned[key].get("valid") is not True:
+                    continue
+                returned[key] = item
+
+        validation = []
+        for point_index, point in enumerate(raw_points, 1):
+            citations_value = point.get("citations", [])
+            if not isinstance(citations_value, list):
+                citations_value = [citations_value]
+            for raw_citation_id in citations_value:
+                citation_id = _normalize_citation_id(raw_citation_id)
+                if citation_id is None:
+                    validation.append({
+                        "point_index": point_index,
+                        "citation_id": None,
+                        "valid": False,
+                        "status": "invalid_citation_id",
+                        "reason": "引用编号不是正整数，按安全策略拒绝放行",
+                    })
+                    continue
+                key = (point_index, citation_id)
+                item = returned.get(key)
+                if citation_id not in context_ids:
+                    validation.append({
+                        "point_index": point_index,
+                        "citation_id": citation_id,
+                        "valid": False,
+                        "status": "citation_not_in_context",
+                        "reason": f"引用[{citation_id}]编号不存在于本次检索结果",
+                    })
+                elif validator_failed:
+                    validation.append({
+                        "point_index": point_index,
+                        "citation_id": citation_id,
+                        "valid": False,
+                        "status": "validator_error",
+                        "reason": "引用校验 Agent 输出无法解析，按安全策略拒绝放行",
+                    })
+                elif item is None:
+                    validation.append({
+                        "point_index": point_index,
+                        "citation_id": citation_id,
+                        "valid": False,
+                        "status": "missing_validation",
+                        "reason": "引用校验 Agent 未覆盖此引用，按安全策略拒绝放行",
+                    })
+                else:
+                    normalized = dict(item)
+                    normalized["valid"] = item.get("valid") is True
+                    normalized["status"] = "validated" if normalized["valid"] else "rejected"
+                    validation.append(normalized)
+
+        valid_count = sum(1 for item in validation if item["valid"])
+        total_count = len(validation)
+        return {
+            "validation": validation,
+            "summary": {
+                "total_citations": total_count,
+                "valid_citations": valid_count,
+                "hallucinated_citations": total_count - valid_count,
+                "validator_failed": validator_failed,
+            },
+        }
 
     async def _run_a4(self, case_desc: str, context: str) -> Dict[str, Any]:
         """A4 风险评估"""
@@ -400,28 +589,38 @@ class MultiAgentOrchestrator:
         a4_result: Dict,
         citations: List[Citation],
     ) -> Dict[str, Any]:
-        """整合 4 Agent 输出，过滤幻觉引用，重算 confidence"""
-        # 把 A3 校验结果按 (point_index, citation_id) 索引
-        invalid_set = set()
+        """整合已核验 Agent 输出，过滤幻觉引用，重算 confidence。"""
+        # 把 A3 校验结果按 (point_index, citation_id) 索引。只有明确的
+        # valid=true 才放行；缺失、格式异常、重复冲突都按无效处理。
+        validation_map = {}
         for v in a3_result.get("validation", []):
-            if not v.get("valid", True):
-                invalid_set.add((v.get("point_index"), v.get("citation_id")))
+            if not isinstance(v, dict):
+                continue
+            point_index = _normalize_citation_id(v.get("point_index"))
+            citation_id = _normalize_citation_id(v.get("citation_id"))
+            if point_index is None or citation_id is None:
+                continue
+            key = (point_index, citation_id)
+            is_valid = v.get("valid") is True
+            validation_map[key] = validation_map.get(key, True) and is_valid
 
-        # 过滤 A2 观点：剔除引用了幻觉的整条观点
+        # 过滤 A2 观点：剔除未通过校验的引用；没有有效依据则剔除整条观点。
         raw_points = a2_result.get("legal_analysis", [])
         clean_points = []
         for i, p in enumerate(raw_points, 1):
-            cites = p.get("citations", [])
-            # 过滤掉无效引用
-            clean_cites = [c for c in cites if (i, c) not in invalid_set]
+            raw_cites = p.get("citations", [])
+            if not isinstance(raw_cites, list):
+                raw_cites = [raw_cites]
+            cites = [cid for cid in (_normalize_citation_id(c) for c in raw_cites) if cid is not None]
+            clean_cites = [c for c in cites if validation_map.get((i, c)) is True]
             if not clean_cites:
-                # 这条观点的所有引用都是幻觉，整条剔除
                 continue
             clean_points.append({
                 "point": p.get("point", ""),
+                "focus_index": p.get("focus_index", i),
                 "citations": clean_cites,
-                "_original_citations": cites,
-                "_dropped_citations": [c for c in cites if (i, c) in invalid_set],
+                "_original_citations": raw_cites,
+                "_dropped_citations": [c for c in cites if validation_map.get((i, c)) is not True],
             })
 
         # 收集所有被引用过的 citation id（去重）
@@ -431,26 +630,55 @@ class MultiAgentOrchestrator:
                 used_ids.add(c)
 
         # 过滤 citations 列表：只保留被合法引用的；dedupe 同法同条
-        used_citations = [c for c in citations if c.id in used_ids]
-        used_citations = _dedup_citations(used_citations)
+        raw_used_citations = [c for c in citations if c.id in used_ids]
+        used_citations = _dedup_citations(raw_used_citations)
 
-        # confidence = 通过校验的引用比例
-        total_cites = sum(len(p.get("_original_citations", [])) for p in clean_points)
-        if total_cites == 0:
-            confidence = 0.0
-        else:
-            valid_cites = sum(len(p.get("citations", [])) for p in clean_points)
-            confidence = round(valid_cites / total_cites, 2)
+        # 统计必须以 A2 原始输出为分母，不能把整条被剔除的幻觉观点漏掉。
+        total_cites = sum(
+            len(p.get("citations", [])) if isinstance(p.get("citations", []), list) else 1
+            for p in raw_points
+        )
+        valid_cites = sum(len(p.get("citations", [])) for p in clean_points)
+        citation_pass_rate = round(valid_cites / total_cites, 2) if total_cites else 0.0
+
+        focus_count = len(a1_result.get("case_focus", []))
+        covered_focuses = {
+            p.get("focus_index") for p in clean_points
+            if isinstance(p.get("focus_index"), int) and 1 <= p.get("focus_index") <= focus_count
+        }
+        focus_coverage_rate = round(len(covered_focuses) / focus_count, 2) if focus_count else 0.0
+        confidence = round(citation_pass_rate * 0.7 + focus_coverage_rate * 0.3, 2)
 
         # 用 dedup 后的 citation 重新编号
         # 旧 id → 新 id 映射
-        old_to_new = {}
+        key_to_new = {}
         for i, c in enumerate(used_citations, 1):
-            old_to_new[c.id] = i
+            key_to_new[(c.law_name or "", c.article_no or "")] = i
             c.id = i
+        old_to_new = {
+            c.id: key_to_new[(c.law_name or "", c.article_no or "")]
+            for c in raw_used_citations
+        }
         # 同步重写 clean_points 的 citation 编号
         for p in clean_points:
-            p["citations"] = [old_to_new.get(c, c) for c in p["citations"]]
+            mapped_ids = []
+            for old_id in p["citations"]:
+                new_id = old_to_new.get(old_id)
+                if new_id is not None and new_id not in mapped_ids:
+                    mapped_ids.append(new_id)
+            dropped = set(p.get("_dropped_citations", []))
+
+            def rewrite_marker(match):
+                old_id = int(match.group(1))
+                if old_id in dropped or old_id not in old_to_new:
+                    return ""
+                return f"[{old_to_new[old_id]}]"
+
+            point_text = re.sub(r"\[(\d+)\]", rewrite_marker, p["point"])
+            point_text = re.sub(r"(\[\d+\])(?:\1)+", r"\1", point_text)
+            point_text = re.sub(r"\s{2,}", " ", point_text).strip()
+            p["point"] = point_text
+            p["citations"] = mapped_ids
 
         # A1 焦点展平
         case_focus = []
@@ -463,10 +691,28 @@ class MultiAgentOrchestrator:
         return {
             "case_focus": case_focus,
             "legal_analysis": [{"point": p["point"], "citations": p["citations"]} for p in clean_points],
-            "risks": a4_result.get("risks", []),
-            "next_steps": a4_result.get("next_steps", []),
+            # A4 未经过逐条引用核验，安全策略要求整合层再次强制丢弃。
+            "risks": [],
+            "next_steps": [],
+            "a4_enabled": False,
+            "unverified_advice_omitted_count": (
+                len(a4_result.get("risks", [])) + len(a4_result.get("next_steps", []))
+            ),
             "citations": [c.model_dump() for c in used_citations],
             "confidence": confidence,
+            "citation_pass_rate": citation_pass_rate,
+            "focus_coverage_rate": focus_coverage_rate,
+            "validation_stats": {
+                "original_citation_count": total_cites,
+                "validated_count": valid_cites,
+                "rejected_count": total_cites - valid_cites,
+                "unvalidated_count": sum(
+                    1 for v in a3_result.get("validation", [])
+                    if isinstance(v, dict) and v.get("status") in {"validator_error", "missing_validation"}
+                ),
+                "focus_count": focus_count,
+                "covered_focus_count": len(covered_focuses),
+            },
             "disclaimer": "本回答基于律瞳知识库检索结果，经多 Agent 交叉校验；最终意见以执业律师及官方法律文本为准",
         }
 

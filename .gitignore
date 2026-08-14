@@ -89,3 +89,4 @@ playwright/.cache/
 # 但保留重要文件
 !backend/app/services/agents.py
 !backend/app/services/contract_review.py
+!backend/app/storage/qdrant_client.py
