@@ -109,6 +109,20 @@
             </form>
         </div>
 
+        <!-- 游客登录 -->
+        <div class="mt-5">
+            <div class="relative flex items-center justify-center mb-4">
+                <div class="flex-1 border-t border-stone-200"></div>
+                <span class="px-3 text-xs text-stone-400">或</span>
+                <div class="flex-1 border-t border-stone-200"></div>
+            </div>
+            <button type="button" id="guest-btn"
+                    class="w-full py-2.5 bg-white border border-stone-300 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-50 hover:border-brand-500 hover:text-brand-600 flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-user-secret"></i>游客登录（体验 Demo 数据）
+            </button>
+            <p class="text-center text-xs text-stone-400 mt-2">仅展示公开功能，数据每日重置</p>
+        </div>
+
         <!-- 底部 -->
         <p class="text-center text-xs text-stone-500 mt-6">
             登录即表示您已阅读并同意 <a href="#" class="text-brand-600 hover:underline">用户协议</a> 和 <a href="#" class="text-brand-600 hover:underline">隐私政策</a>
@@ -198,6 +212,30 @@
                 saveAndGoHome(data);
             } catch (err) {
                 showError(err.message);
+            } finally {
+                setLoading(btn, false);
+            }
+        });
+
+        // 游客登录: 自动用 demo / demo123 登录
+        document.getElementById("guest-btn").addEventListener("click", async () => {
+            hideError();
+            const btn = document.getElementById("guest-btn");
+            setLoading(btn, true);
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: "demo", password: "demo123" }),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || `HTTP ${res.status}`);
+                }
+                const data = await res.json();
+                saveAndGoHome(data);
+            } catch (err) {
+                showError("游客登录失败: " + err.message);
             } finally {
                 setLoading(btn, false);
             }
