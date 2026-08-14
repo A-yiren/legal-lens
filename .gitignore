@@ -33,6 +33,13 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+# WPS / Office 锁文件
+~*.pptx
+~*.ppt
+~*.docx
+~*.doc
+~*.xlsx
+~*.xls
 
 # 数据 & 模型 (体积大，不上传)
 storage/
