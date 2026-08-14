@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金睛 RiskLens · 移动端 UI 设计稿</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body {
+            background: #0a0a0a;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+        /* iPhone 14 Pro 框: 393x852 viewport, 加上圆角和刘海 */
+        .phone-shell {
+            width: 393px;
+            height: 852px;
+            background: #000;
+            border-radius: 55px;
+            padding: 12px;
+            position: relative;
+            box-shadow:
+                0 0 0 2px #1f1f1f,
+                0 0 0 4px #2a2a2a,
+                0 30px 60px -10px rgba(0, 0, 0, 0.8),
+                0 18px 36px -18px rgba(12, 74, 62, 0.4);
+        }
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #fafaf9;
+            border-radius: 44px;
+            overflow: hidden;
+            position: relative;
+        }
+        /* Dynamic Island */
+        .dynamic-island {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 124px;
+            height: 36px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 100;
+        }
+        /* Status bar */
+        .status-bar {
+            height: 54px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 32px 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1c1917;
+        }
+        .status-bar .right { display: flex; gap: 6px; align-items: center; }
+
+        /* Screen container */
+        .screen {
+            display: none;
+            height: calc(100% - 54px);
+            flex-direction: column;
+            position: relative;
+        }
+        .screen.active { display: flex; }
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        .scroll-area::-webkit-scrollbar { display: none; }
+
+        /* Bottom tab bar */
+        .tab-bar {
+            height: 84px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            padding: 8px 0 24px;
+        }
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            color: #78716c;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .tab-item i { font-size: 22px; }
+        .tab-item.active { color: #0c4a3e; }
+        .tab-item.active i { transform: scale(1.1); }
+
+        /* Sticky header */
+        .app-header {
+            background: linear-gradient(180deg, #0c4a3e 0%, #0a3a30 100%);
+            color: white;
+            padding: 16px 20px 20px;
+            position: relative;
+        }
+        .app-header.h-light {
+            background: white;
+            color: #1c1917;
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+        }
+
+        /* Home indicator */
+        .home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+            height: 5px;
+            background: #1c1917;
+            border-radius: 3px;
+            z-index: 101;
+        }
+
+        /* Card */
+        .m-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Pulse */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+        /* Sidebar mockup (select screen) */
+        .screen-selector {
+            position: fixed;
+            left: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 200;
+        }
+        .screen-selector button {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #d4d4d4;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+            min-width: 110px;
+            text-align: left;
+        }
+        .screen-selector button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+        .screen-selector button.active {
+            background: #0c4a3e;
+            border-color: #0c4a3e;
+            color: white;
+        }
+        .screen-selector button i {
+            display: inline-block;
+            width: 18px;
+            margin-right: 4px;
+        }
+
+        /* Brand colors */
+        .text-brand { color: #0c4a3e; }
+        .bg-brand { background-color: #0c4a3e; }
+        .bg-brand-soft { background-color: #ecfdf5; }
+        .text-amber { color: #d97706; }
+        .bg-amber { background-color: #d97706; }
+        .bg-amber-soft { background-color: #fef3c7; }
+        .text-ink { color: #1c1917; }
+        .text-mute { color: #78716c; }
+
+        /* Safe area */
+        .pt-safe { padding-top: 54px; }
+        .pb-safe { padding-bottom: 84px; }
+
+        /* Scroll indicator */
+        .scroll-hint {
+            text-align: center;
+            color: #a8a29e;
+            font-size: 11px;
+            padding: 12px 0 8px;
+        }
+
+        /* FAB */
+        .fab {
+            position: absolute;
+            right: 20px;
+            bottom: 100px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background: #0c4a3e;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 8px 24px rgba(12, 74, 62, 0.4);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+
+    <!-- Screen selector (left) -->
+    <div class="screen-selector">
+        <div style="color: #d4d4d4; font-size: 13px; font-weight: 600; padding: 0 14px 4px;">5 Screens</div>
+        <button class="active" data-screen="home"><i class="fa-solid fa-house"></i> 工作台</button>
+        <button data-screen="ai-input"><i class="fa-solid fa-sparkles"></i> AI 分析</button>
+        <button data-screen="ai-result"><i class="fa-solid fa-file-contract"></i> 分析结果</button>
+        <button data-screen="knowledge"><i class="fa-solid fa-book"></i> 知识库</button>
+        <button data-screen="cases"><i class="fa-solid fa-folder-open"></i> 案件库</button>
+    </div>
+
+    <!-- Title (top) -->
+    <div style="position: fixed; top: 24px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 200;">
+        <div style="color: #d4d4d4; font-size: 14px; font-weight: 600;">金睛 RiskLens · Mobile UI 设计稿</div>
+        <div style="color: #78716c; font-size: 11px; margin-top: 4px;">iPhone 14 Pro · 393 × 852 · 16:9</div>
+    </div>
+
+    <!-- Phone shell -->
+    <div class="phone-shell">
+        <div class="phone-screen">
+            <div class="dynamic-island"></div>
+
+            <!-- Status bar (shared) -->
+            <div class="status-bar">
+                <span>9:41</span>
+                <span class="right">
+                    <i class="fa-solid fa-signal" style="font-size: 14px;"></i>
+                    <i class="fa-solid fa-wifi" style="font-size: 13px;"></i>
+                    <i class="fa-solid fa-battery-full" style="font-size: 18px;"></i>
+                </span>
+            </div>
+
+            <!-- ========== Screen 1: 工作台 ========== -->
+            <div class="screen active" id="screen-home">
+                <!-- Header (深绿渐变) -->
+                <div class="app-header">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.7;">下午好 👋</div>
+                            <div style="font-size: 18px; font-weight: 600;">王律师</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background: rgba(255,255,255,0.15);">
+                                <i class="fa-solid fa-bell"></i>
+                            </div>
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background: rgba(255,255,255,0.15);">
+                                <i class="fa-solid fa-gear"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 大标题 -->
+                    <div class="text-2xl font-bold mt-4">金睛 RiskLens</div>
+                    <div style="font-size: 13px; opacity: 0.75; margin-top: 4px;">金融法律风险研判 AI 助手</div>
+                    <!-- CTA -->
+                    <div class="mt-4 bg-white rounded-2xl p-4 flex items-center gap-3" style="color: #0c4a3e;">
+                        <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background: #ecfdf5;">
+                            <i class="fa-solid fa-sparkles text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-semibold text-sm">开始一次分析</div>
+                            <div class="text-xs" style="color: #57534e;">AI 4 Agent 协同 · 60s 出报告</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color: #a8a29e;"></i>
+                    </div>
+                </div>
+
+                <!-- Scroll area -->
+                <div class="scroll-area" style="background: #f5f5f4;">
+                    <div class="px-4 pt-4">
+                        <!-- 4 统计卡 (2x2) -->
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div class="m-card">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #ecfdf5;">
+                                        <i class="fa-solid fa-book text-sm text-brand"></i>
+                                    </div>
+                                    <div class="text-xs text-mute">法规</div>
+                                </div>
+                                <div class="text-2xl font-bold text-ink">41</div>
+                                <div class="text-xs text-mute">部</div>
+                            </div>
+                            <div class="m-card">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #fef3c7;">
+                                        <i class="fa-solid fa-folder text-sm" style="color: #d97706;"></i>
+                                    </div>
+                                    <div class="text-xs text-mute">判例</div>
+                                </div>
+                                <div class="text-2xl font-bold text-ink">60</div>
+                                <div class="text-xs text-mute">个</div>
+                            </div>
+                            <div class="m-card">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #dbeafe;">
+                                        <i class="fa-solid fa-cube text-sm" style="color: #2563eb;"></i>
+                                    </div>
+                                    <div class="text-xs text-mute">向量</div>
+                                </div>
+                                <div class="text-2xl font-bold text-ink">2,020</div>
+                                <div class="text-xs text-mute">条</div>
+                            </div>
+                            <div class="m-card">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #fce7f3;">
+                                        <i class="fa-solid fa-bolt text-sm" style="color: #db2777;"></i>
+                                    </div>
+                                    <div class="text-xs text-mute">幻觉率</div>
+                                </div>
+                                <div class="text-2xl font-bold text-ink">&lt;5%</div>
+                                <div class="text-xs text-mute">A3 核验</div>
+                            </div>
+                        </div>
+
+                        <!-- 快捷功能 -->
+                        <div class="m-card mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="text-sm font-semibold text-ink">快捷功能</div>
+                                <div class="text-xs text-mute">编辑</div>
+                            </div>
+                            <div class="grid grid-cols-4 gap-3">
+                                <div class="text-center">
+                                    <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center" style="background: #0c4a3e;">
+                                        <i class="fa-solid fa-sparkles text-white text-lg"></i>
+                                    </div>
+                                    <div class="text-xs mt-1.5 text-ink">AI 分析</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center" style="background: #d97706;">
+                                        <i class="fa-solid fa-magnifying-glass text-white text-lg"></i>
+                                    </div>
+                                    <div class="text-xs mt-1.5 text-ink">类案检索</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center" style="background: #2563eb;">
+                                        <i class="fa-solid fa-file-contract text-white text-lg"></i>
+                                    </div>
+                                    <div class="text-xs mt-1.5 text-ink">合同审查</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center" style="background: #78716c;">
+                                        <i class="fa-solid fa-book text-white text-lg"></i>
+                                    </div>
+                                    <div class="text-xs mt-1.5 text-ink">知识库</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 最近分析 -->
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-sm font-semibold text-ink">最近分析</div>
+                            <div class="text-xs text-mute">查看全部</div>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="m-card flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: #ecfdf5;">
+                                    <i class="fa-solid fa-building-columns text-brand"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-ink truncate">金融借款合同纠纷</div>
+                                    <div class="text-xs text-mute">2 小时前 · 1,840 chunks</div>
+                                </div>
+                                <div class="text-xs text-amber font-semibold">95%</div>
+                            </div>
+                            <div class="m-card flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: #fef3c7;">
+                                    <i class="fa-solid fa-shield-halved" style="color: #d97706;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-ink truncate">信用卡盗刷理赔</div>
+                                    <div class="text-xs text-mute">昨天 16:20 · A3 核验通过</div>
+                                </div>
+                                <div class="text-xs text-amber font-semibold">100%</div>
+                            </div>
+                            <div class="m-card flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: #dbeafe;">
+                                    <i class="fa-solid fa-hand-holding-dollar" style="color: #2563eb;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-ink truncate">理财适当性纠纷</div>
+                                    <div class="text-xs text-mute">3 天前</div>
+                                </div>
+                                <div class="text-xs text-amber font-semibold">88%</div>
+                            </div>
+                        </div>
+                        <div class="scroll-hint">↑ 滑动查看更多</div>
+                    </div>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab"><i class="fa-solid fa-plus"></i></div>
+
+                <!-- Tab bar -->
+                <div class="tab-bar">
+                    <div class="tab-item active"><i class="fa-solid fa-house"></i><span>工作台</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-sparkles"></i><span>AI</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-book"></i><span>知识库</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-folder-open"></i><span>案件</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-user"></i><span>我的</span></div>
+                </div>
+            </div>
+
+            <!-- ========== Screen 2: AI 分析输入 ========== -->
+            <div class="screen" id="screen-ai-input">
+                <div class="app-header h-light">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-chevron-left text-lg"></i>
+                        <div>
+                            <div class="text-base font-semibold">AI 法律分析</div>
+                            <div class="text-xs text-mute">4 Agent 协同 · 60s 出报告</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-area" style="background: #f5f5f4;">
+                    <div class="p-4">
+                        <!-- 输入框 -->
+                        <div class="m-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-sm font-semibold text-ink">案情描述</div>
+                                <div class="text-xs text-mute"><span id="char-count">0</span> / 2000</div>
+                            </div>
+                            <textarea placeholder="详细描述案件经过,AI 将基于知识库检索相关法律条文..." class="w-full text-sm leading-relaxed p-3 border-0 outline-none resize-none rounded-xl" style="background: #fafaf9; min-height: 200px; color: #1c1917;">某企业向银行申请 500 万元流动资金贷款,担保方式为关联公司股权质押。请问:
+1) 关联公司股权质押是否需要董事会决议?
+2) 担保权实现时与其他债权人如何排序?
+3) 银行应要求企业补充哪些合规材料?</textarea>
+                        </div>
+
+                        <!-- 配置 -->
+                        <div class="m-card mt-3">
+                            <div class="text-sm font-semibold text-ink mb-3">分析配置</div>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs text-mute mb-1.5">检索条数</div>
+                                    <div class="flex gap-2">
+                                        <div class="px-3 py-1.5 rounded-lg text-xs" style="background: #f5f5f4; color: #57534e;">5 条</div>
+                                        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background: #0c4a3e; color: white;">8 条</div>
+                                        <div class="px-3 py-1.5 rounded-lg text-xs" style="background: #f5f5f4; color: #57534e;">12 条</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-mute mb-1.5">法律范围</div>
+                                    <div class="flex gap-2 flex-wrap">
+                                        <div class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background: #0c4a3e; color: white;">所有法律</div>
+                                        <div class="px-3 py-1.5 rounded-lg text-xs" style="background: #f5f5f4; color: #57534e;">金融 (15)</div>
+                                        <div class="px-3 py-1.5 rounded-lg text-xs" style="background: #f5f5f4; color: #57534e;">民商 (8)</div>
+                                        <div class="px-3 py-1.5 rounded-lg text-xs" style="background: #f5f5f4; color: #57534e;">刑事 (3)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 模板 -->
+                        <div class="m-card mt-3">
+                            <div class="text-sm font-semibold text-ink mb-2">模板示例</div>
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2 p-2 rounded-lg" style="background: #fafaf9;">
+                                    <i class="fa-solid fa-building-columns text-brand text-sm"></i>
+                                    <span class="text-xs text-ink flex-1">银行信贷纠纷</span>
+                                    <i class="fa-solid fa-chevron-right text-mute text-xs"></i>
+                                </div>
+                                <div class="flex items-center gap-2 p-2 rounded-lg" style="background: #fafaf9;">
+                                    <i class="fa-solid fa-shield-halved text-amber text-sm"></i>
+                                    <span class="text-xs text-ink flex-1">保险理赔纠纷</span>
+                                    <i class="fa-solid fa-chevron-right text-mute text-xs"></i>
+                                </div>
+                                <div class="flex items-center gap-2 p-2 rounded-lg" style="background: #fafaf9;">
+                                    <i class="fa-solid fa-hand-holding-dollar text-sm" style="color: #2563eb;"></i>
+                                    <span class="text-xs text-ink flex-1">理财适当性纠纷</span>
+                                    <i class="fa-solid fa-chevron-right text-mute text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部 CTA -->
+                <div class="px-4 pt-3 pb-4" style="background: white; border-top: 0.5px solid rgba(0,0,0,0.06);">
+                    <button class="w-full py-3.5 rounded-2xl font-semibold text-white flex items-center justify-center gap-2" style="background: #0c4a3e;">
+                        <i class="fa-solid fa-sparkles"></i>
+                        开始 AI 分析
+                    </button>
+                </div>
+
+                <div class="tab-bar">
+                    <div class="tab-item"><i class="fa-solid fa-house"></i><span>工作台</span></div>
+                    <div class="tab-item active"><i class="fa-solid fa-sparkles"></i><span>AI</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-book"></i><span>知识库</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-folder-open"></i><span>案件</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-user"></i><span>我的</span></div>
+                </div>
+            </div>
+
+            <!-- ========== Screen 3: AI 分析结果 ========== -->
+            <div class="screen" id="screen-ai-result">
+                <div class="app-header h-light">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-chevron-left text-lg"></i>
+                            <div class="text-base font-semibold">分析报告</div>
+                        </div>
+                        <div class="flex gap-3">
+                            <i class="fa-regular fa-bookmark text-lg"></i>
+                            <i class="fa-solid fa-share-nodes text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-area" style="background: #f5f5f4;">
+                    <div class="p-4">
+                        <!-- 顶部状态卡 -->
+                        <div class="rounded-2xl p-4 mb-3" style="background: linear-gradient(135deg, #0c4a3e 0%, #0a3a30 100%); color: white;">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="text-xs" style="opacity: 0.8;">4 Agent 协同校验</div>
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                    <span class="text-xs">已完成</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <div class="text-3xl font-bold">100%</div>
+                                    <div class="text-xs" style="opacity: 0.7;">AI 置信度</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs" style="opacity: 0.7;">耗时 23s</div>
+                                    <div class="text-xs" style="opacity: 0.7;">2 焦点 · 6 风险</div>
+                                </div>
+                            </div>
+                            <!-- Agent chips -->
+                            <div class="flex gap-1.5 mt-3 flex-wrap">
+                                <div class="px-2 py-1 rounded-md text-xs" style="background: rgba(255,255,255,0.15);">A1 焦点</div>
+                                <div class="px-2 py-1 rounded-md text-xs" style="background: rgba(255,255,255,0.15);">A2 分析</div>
+                                <div class="px-2 py-1 rounded-md text-xs" style="background: rgba(251, 191, 36, 0.9); color: #0c4a3e; font-weight: 600;">A3 核验</div>
+                                <div class="px-2 py-1 rounded-md text-xs" style="background: rgba(255,255,255,0.15);">A4 风险</div>
+                            </div>
+                        </div>
+
+                        <!-- 5 字段报告: 案件焦点 -->
+                        <div class="m-card mb-3">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: #ecfdf5;">
+                                    <span class="text-sm font-bold text-brand">1</span>
+                                </div>
+                                <div class="text-sm font-semibold text-ink">案件焦点</div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-start gap-2 p-2 rounded-lg" style="background: #fafaf9;">
+                                    <span class="text-xs text-brand font-semibold mt-0.5">1.</span>
+                                    <span class="text-xs text-ink leading-relaxed flex-1">关联公司股权质押是否需要董事会决议</span>
+                                </div>
+                                <div class="flex items-start gap-2 p-2 rounded-lg" style="background: #fafaf9;">
+                                    <span class="text-xs text-brand font-semibold mt-0.5">2.</span>
+                                    <span class="text-xs text-ink leading-relaxed flex-1">担保权实现时与其他债权人的排序问题</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5 字段报告: 法律分析 -->
+                        <div class="m-card mb-3">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: #ecfdf5;">
+                                    <span class="text-sm font-bold text-brand">2</span>
+                                </div>
+                                <div class="text-sm font-semibold text-ink">法律分析</div>
+                            </div>
+                            <div class="text-xs text-ink leading-relaxed mb-2">
+                                关联公司股权质押属于关联交易,根据 <span class="text-brand font-semibold">公司法第一百八十二条</span>,董事、监事、高级管理人员及其近亲属与公司订立合同或进行交易时,应报告并经董事会或股东会决议通过 <span class="text-amber font-semibold">[4]</span>
+                            </div>
+                            <!-- 引用法条 -->
+                            <div class="rounded-lg p-2.5" style="background: #fafaf9;">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <div class="text-xs font-semibold text-brand">公司法 第一百八十二条</div>
+                                    <div class="flex items-center gap-1 text-xs" style="color: #16a34a;">
+                                        <i class="fa-solid fa-check-circle"></i>
+                                        <span>通过</span>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-mute leading-relaxed">关联交易:董事、监事、高级管理人员,直接或间接与本公司订立合同或者进行交易...</div>
+                            </div>
+                        </div>
+
+                        <!-- 5 字段报告: 风险点 -->
+                        <div class="m-card mb-3">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: #fef3c7;">
+                                    <span class="text-sm font-bold" style="color: #d97706;">3</span>
+                                </div>
+                                <div class="text-sm font-semibold text-ink">风险点提示</div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-start gap-2 p-2.5 rounded-lg" style="background: #fef2f2;">
+                                    <i class="fa-solid fa-triangle-exclamation text-sm mt-0.5" style="color: #dc2626;"></i>
+                                    <div class="flex-1 text-xs text-ink leading-relaxed">股权质押未经董事会决议可能导致担保合同无效</div>
+                                </div>
+                                <div class="flex items-start gap-2 p-2.5 rounded-lg" style="background: #fff7ed;">
+                                    <i class="fa-solid fa-triangle-exclamation text-sm mt-0.5" style="color: #ea580c;"></i>
+                                    <div class="flex-1 text-xs text-ink leading-relaxed">关联交易需关联股东回避表决,否则可能引发撤销之诉</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5 字段报告: 下一步 -->
+                        <div class="m-card mb-3">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: #dbeafe;">
+                                    <span class="text-sm font-bold" style="color: #2563eb;">4</span>
+                                </div>
+                                <div class="text-sm font-semibold text-ink">下一步建议</div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex items-start gap-2">
+                                    <span class="text-xs text-brand font-semibold">▸</span>
+                                    <span class="text-xs text-ink flex-1">审查董事会决议,关联股东应回避</span>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span class="text-xs text-brand font-semibold">▸</span>
+                                    <span class="text-xs text-ink flex-1">办理股权出质登记,确保质权设立</span>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span class="text-xs text-brand font-semibold">▸</span>
+                                    <span class="text-xs text-ink flex-1">在合同中明确担保权实现顺序</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 行动按钮 -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <button class="py-3 rounded-xl text-sm font-semibold" style="background: white; color: #0c4a3e; border: 1px solid #0c4a3e;">
+                                <i class="fa-solid fa-folder-plus"></i> 存为案件
+                            </button>
+                            <button class="py-3 rounded-xl text-sm font-semibold text-white" style="background: #0c4a3e;">
+                                <i class="fa-solid fa-share"></i> 分享报告
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-bar">
+                    <div class="tab-item"><i class="fa-solid fa-house"></i><span>工作台</span></div>
+                    <div class="tab-item active"><i class="fa-solid fa-sparkles"></i><span>AI</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-book"></i><span>知识库</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-folder-open"></i><span>案件</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-user"></i><span>我的</span></div>
+                </div>
+            </div>
+
+            <!-- ========== Screen 4: 知识库 ========== -->
+            <div class="screen" id="screen-knowledge">
+                <div class="app-header">
+                    <div class="flex items-center gap-3 mb-3">
+                        <i class="fa-solid fa-chevron-left text-lg"></i>
+                        <div class="text-base font-semibold">知识库</div>
+                    </div>
+                    <div class="text-xs mb-3" style="opacity: 0.75;">让 AI 推理扎根于真实法律条文</div>
+                    <!-- 3 统计 -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="rounded-lg p-2" style="background: rgba(255,255,255,0.12);">
+                            <div class="text-xl font-bold">101</div>
+                            <div class="text-xs" style="opacity: 0.75;">法律文档</div>
+                        </div>
+                        <div class="rounded-lg p-2" style="background: rgba(255,255,255,0.12);">
+                            <div class="text-xl font-bold">2,020</div>
+                            <div class="text-xs" style="opacity: 0.75;">条文分块</div>
+                        </div>
+                        <div class="rounded-lg p-2" style="background: rgba(255,255,255,0.12);">
+                            <div class="text-xl font-bold">1,840</div>
+                            <div class="text-xs" style="opacity: 0.75;">向量索引</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-area" style="background: #f5f5f4;">
+                    <div class="px-4 pt-3">
+                        <!-- 3 Tab 切换 -->
+                        <div class="flex rounded-xl p-1 mb-3" style="background: #e7e5e4;">
+                            <div class="flex-1 py-2 rounded-lg text-center text-xs font-semibold" style="background: white; color: #1c1917; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">全部</div>
+                            <div class="flex-1 py-2 rounded-lg text-center text-xs font-medium" style="color: #78716c;">📚 法律 <span class="text-xs opacity-60">1840</span></div>
+                            <div class="flex-1 py-2 rounded-lg text-center text-xs font-medium" style="color: #78716c;">⚖ 案例 <span class="text-xs opacity-60">60</span></div>
+                        </div>
+
+                        <!-- 搜索框 -->
+                        <div class="m-card flex items-center gap-2 mb-3" style="padding: 12px 16px;">
+                            <i class="fa-solid fa-magnifying-glass text-mute"></i>
+                            <input type="text" placeholder="搜索法条 / 案例" class="flex-1 text-sm outline-none" style="background: transparent;">
+                            <div class="text-xs text-mute px-2 py-1 rounded" style="background: #f5f5f4;">⌘K</div>
+                        </div>
+
+                        <!-- 列表 -->
+                        <div class="flex items-center justify-between mb-2.5">
+                            <div class="text-sm font-semibold text-ink">金融法规</div>
+                            <div class="text-xs text-mute">15 部</div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="m-card flex items-center gap-3" style="border-left: 3px solid #2563eb;">
+                                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: #dbeafe;">
+                                    <i class="fa-solid fa-scale-balanced text-sm" style="color: #2563eb;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-ink truncate">中华人民共和国商业银行法</div>
+                                    <div class="text-xs text-mute">95 个分块 · 2024-08-14</div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-mute text-xs"></i>
+                            </div>
+
+                            <div class="m-card flex items-center gap-3" style="border-left: 3px solid #2563eb;">
+                                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: #dbeafe;">
+                                    <i class="fa-solid fa-scale-balanced text-sm" style="color: #2563eb;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-ink truncate">中华人民共和国证券法</div>
+                                    <div class="text-xs text-mute">218 个分块</div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-mute text-xs"></i>
+                            </div>
+
+                            <div class="m-card flex items-center gap-3" style="border-left: 3px solid #d97706;">
+                                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: #fef3c7;">
+                                    <i class="fa-solid fa-gavel text-sm" style="color: #d97706;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-ink truncate">信用卡盗刷纠纷案</div>
+                                    <div class="text-xs text-mute">3 chunks · 真实判例</div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-mute text-xs"></i>
+                            </div>
+
+                            <div class="m-card flex items-center gap-3" style="border-left: 3px solid #d97706;">
+                                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: #fef3c7;">
+                                    <i class="fa-solid fa-gavel text-sm" style="color: #d97706;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium text-ink truncate">金融借款合同纠纷案</div>
+                                    <div class="text-xs text-mute">3 chunks</div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-mute text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab"><i class="fa-solid fa-upload"></i></div>
+
+                <div class="tab-bar">
+                    <div class="tab-item"><i class="fa-solid fa-house"></i><span>工作台</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-sparkles"></i><span>AI</span></div>
+                    <div class="tab-item active"><i class="fa-solid fa-book"></i><span>知识库</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-folder-open"></i><span>案件</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-user"></i><span>我的</span></div>
+                </div>
+            </div>
+
+            <!-- ========== Screen 5: 案件库 ========== -->
+            <div class="screen" id="screen-cases">
+                <div class="app-header h-light">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-base font-semibold">案件库</div>
+                            <div class="text-xs text-mute">已保存 6 个案件</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background: #f5f5f4;">
+                                <i class="fa-solid fa-magnifying-glass text-mute text-sm"></i>
+                            </div>
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background: #f5f5f4;">
+                                <i class="fa-solid fa-filter text-mute text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-area" style="background: #f5f5f4;">
+                    <div class="p-4">
+                        <!-- 状态过滤 -->
+                        <div class="flex gap-2 mb-3 overflow-x-auto" style="scrollbar-width: none;">
+                            <div class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap" style="background: #0c4a3e; color: white;">全部 (6)</div>
+                            <div class="px-3 py-1.5 rounded-full text-xs whitespace-nowrap" style="background: white; color: #57534e;">分析中 (2)</div>
+                            <div class="px-3 py-1.5 rounded-full text-xs whitespace-nowrap" style="background: white; color: #57534e;">已结案 (3)</div>
+                            <div class="px-3 py-1.5 rounded-full text-xs whitespace-nowrap" style="background: white; color: #57534e;">归档 (1)</div>
+                        </div>
+
+                        <!-- 案件卡 -->
+                        <div class="space-y-3">
+                            <div class="m-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded text-white" style="background: #16a34a;">已结案</span>
+                                        <span class="text-xs text-mute">#2024-001</span>
+                                    </div>
+                                    <i class="fa-solid fa-ellipsis text-mute text-sm"></i>
+                                </div>
+                                <div class="text-sm font-semibold text-ink mb-1">金融借款合同纠纷</div>
+                                <div class="text-xs text-mute mb-2 line-clamp-2">某企业向银行申请 500 万元流动资金贷款,担保方式为关联公司股权质押...</div>
+                                <div class="flex items-center justify-between text-xs text-mute">
+                                    <div class="flex items-center gap-3">
+                                        <span><i class="fa-regular fa-user"></i> 王律师</span>
+                                        <span><i class="fa-regular fa-clock"></i> 2h ago</span>
+                                    </div>
+                                    <div class="font-semibold" style="color: #d97706;">100%</div>
+                                </div>
+                            </div>
+
+                            <div class="m-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded text-white" style="background: #16a34a;">已结案</span>
+                                        <span class="text-xs text-mute">#2024-002</span>
+                                    </div>
+                                    <i class="fa-solid fa-ellipsis text-mute text-sm"></i>
+                                </div>
+                                <div class="text-sm font-semibold text-ink mb-1">信用卡盗刷理赔</div>
+                                <div class="text-xs text-mute mb-2 line-clamp-2">投保人称境外交易非本人操作,保险公司以未如实告知为由拒赔...</div>
+                                <div class="flex items-center justify-between text-xs text-mute">
+                                    <div class="flex items-center gap-3">
+                                        <span><i class="fa-regular fa-user"></i> 王律师</span>
+                                        <span><i class="fa-regular fa-clock"></i> 1d ago</span>
+                                    </div>
+                                    <div class="font-semibold" style="color: #d97706;">100%</div>
+                                </div>
+                            </div>
+
+                            <div class="m-card">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded text-white" style="background: #ea580c;">分析中</span>
+                                        <span class="text-xs text-mute">#2024-003</span>
+                                    </div>
+                                    <i class="fa-solid fa-ellipsis text-mute text-sm"></i>
+                                </div>
+                                <div class="text-sm font-semibold text-ink mb-1">理财适当性纠纷</div>
+                                <div class="text-xs text-mute mb-2 line-clamp-2">60 岁 R5 风险等级客户被推荐私募基金,亏损 50 万后投诉...</div>
+                                <div class="flex items-center justify-between text-xs text-mute">
+                                    <div class="flex items-center gap-3">
+                                        <span><i class="fa-regular fa-user"></i> 王律师</span>
+                                        <span><i class="fa-regular fa-clock"></i> 3d ago</span>
+                                    </div>
+                                    <div class="font-semibold pulse" style="color: #ea580c;">88%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAB -->
+                <div class="fab"><i class="fa-solid fa-plus"></i></div>
+
+                <div class="tab-bar">
+                    <div class="tab-item"><i class="fa-solid fa-house"></i><span>工作台</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-sparkles"></i><span>AI</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-book"></i><span>知识库</span></div>
+                    <div class="tab-item active"><i class="fa-solid fa-folder-open"></i><span>案件</span></div>
+                    <div class="tab-item"><i class="fa-solid fa-user"></i><span>我的</span></div>
+                </div>
+            </div>
+
+            <div class="home-indicator"></div>
+        </div>
+    </div>
+
+    <script>
+        // 切换 screen
+        const screens = document.querySelectorAll('.screen');
+        const buttons = document.querySelectorAll('.screen-selector button');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.screen;
+                screens.forEach(s => s.classList.remove('active'));
+                buttons.forEach(b => b.classList.remove('active'));
+                document.getElementById('screen-' + target).classList.add('active');
+                btn.classList.add('active');
+            });
+        });
+        // tab 切换同步
+        document.querySelectorAll('.tab-bar').forEach(bar => {
+            bar.querySelectorAll('.tab-item').forEach((item, idx) => {
+                item.addEventListener('click', () => {
+                    const order = ['home', 'ai-input', 'knowledge', 'cases', 'ai-result'];
+                    const map = ['home', 'ai-input', 'knowledge', 'cases', 'home']; // simple
+                    const target = order[idx] || 'home';
+                    screens.forEach(s => s.classList.remove('active'));
+                    buttons.forEach(b => b.classList.remove('active'));
+                    document.getElementById('screen-' + target).classList.add('active');
+                    buttons.forEach(b => { if (b.dataset.screen === target) b.classList.add('active'); });
+                });
+            });
+        });
+        // 字符计数
+        const ta = document.querySelector('#screen-ai-input textarea');
+        const cc = document.getElementById('char-count');
+        if (ta && cc) {
+            ta.addEventListener('input', () => cc.textContent = ta.value.length);
+            cc.textContent = ta.value.length;
+        }
+    </script>
+</body>
+</html>
